@@ -82,16 +82,7 @@ function getClient(): Promise<MongoClient> {
   return globalForMongo.__mongoClient
 }
 
-// 이메일 가입 → 아이디 가입으로 바꾸면서 예전 계정에 아이디를 채우고 이메일 유일 인덱스를 없앤다
-async function migrateUsers(db: Db) {
-  const users = db.collection('users')
-  await users.updateMany({ username: { $exists: false }, email: { $type: 'string' } }, [{ $set: { username: '$email' } }])
-  const indexes = await users.indexes().catch(() => [])
-  if (indexes.some(i => i.name === 'email_1')) await users.dropIndex('email_1')
-}
-
 async function ensureIndexes(db: Db) {
-  await migrateUsers(db)
   await Promise.all([
     db.collection('users').createIndexes([
       { key: { username: 1 }, unique: true },
@@ -120,11 +111,11 @@ async function ensureIndexes(db: Db) {
 // DB 이름은 연결 문자열 경로(…mongodb.net/<db>)에서 가져온다
 export async function useDb(): Promise<Db> {
   const db = (await getClient()).db()
+  // 인덱스는 이미 있으면 그대로라서, 콜드 스타트 첫 요청이 기다리지 않게 뒤에서 맞춘다
   globalForMongo.__mongoIndexes ??= ensureIndexes(db).catch((error) => {
     globalForMongo.__mongoIndexes = undefined
-    throw error
+    console.error('[mongo] 인덱스 생성 실패', error)
   })
-  await globalForMongo.__mongoIndexes
   return db
 }
 

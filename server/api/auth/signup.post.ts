@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
   try {
     const { insertedId } = await users.insertOne(doc)
     await createSession(event, insertedId, body.remember !== false)
+    return { ok: true, user: toMeUser(doc) }
   }
   catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
@@ -33,5 +34,4 @@ export default defineEventHandler(async (event) => {
     }
     throw error
   }
-  return { ok: true }
 })

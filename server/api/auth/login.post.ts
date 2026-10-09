@@ -1,15 +1,17 @@
 export default defineEventHandler(async (event) => {
-  await rateLimit(event, 'login', 20, 60)
-
   const body = await readBody<Record<string, unknown>>(event)
   const username = typeof body?.username === 'string' ? body.username.trim().toLowerCase() : ''
   const password = typeof body?.password === 'string' ? body.password : ''
+
+  // DB를 여러 번 오가지 않게 횟수 제한·잠금 확인·계정 조회를 한꺼번에 한다
+  const { users } = await useCollections()
+  const [, , user] = await Promise.all([
+    rateLimit(event, 'login', 20, 60),
+    username && assertNotLocked(username),
+    username ? users.findOne({ username }) : null,
+  ])
   if (!username || !password) throw createError({ statusCode: 400, message: '아이디와 비밀번호를 입력해 주세요.' })
 
-  await assertNotLocked(username)
-
-  const { users } = await useCollections()
-  const user = await users.findOne({ username })
   const ok = await verifyPassword(password, user?.passwordHash ?? await dummyPasswordHash())
   if (!user || !ok) {
     const left = await recordLoginFail(username)
@@ -22,8 +24,11 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await clearLoginFails(username)
-  await users.updateOne({ _id: user._id }, { $set: { lastSeenAt: new Date() } })
-  await createSession(event, user._id, body.remember !== false)
-  return { ok: true }
+  await Promise.all([
+    clearLoginFails(username),
+    users.updateOne({ _id: user._id }, { $set: { lastSeenAt: new Date() } }),
+    createSession(event, user._id, body.remember !== false),
+  ])
+  // 화면이 /api/me를 다시 부르지 않게 사용자 정보를 같이 준다
+  return { ok: true, user: toMeUser(user) }
 })

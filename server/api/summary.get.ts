@@ -14,9 +14,10 @@ export default defineEventHandler(async (event): Promise<SummaryResponse> => {
   const lookFrom = addDays(today, -(LOOKBACK_DAYS - 1))
   const range = { $or: [{ date: { $gte: `${month}-01`, $lte: `${month}-31` } }, { date: { $gte: lookFrom, $lte: today } }] }
   const { records, notes } = await useCollections()
+  // 기본 첫 묶음(101건)을 넘으면 getMore로 한 번 더 오가므로 넉넉히 한 번에 받는다
   const [recordDocs, noteDocs] = await Promise.all([
-    records.find({ userId: user._id, ...range }, { projection: { date: 1, session: 1, avg: 1 } }).toArray(),
-    notes.find({ userId: user._id, date: { $gte: lookFrom, $lte: today } }, { projection: { date: 1, tags: 1 } }).toArray(),
+    records.find({ userId: user._id, ...range }, { projection: { date: 1, session: 1, avg: 1 }, batchSize: 500 }).toArray(),
+    notes.find({ userId: user._id, date: { $gte: lookFrom, $lte: today } }, { projection: { date: 1, tags: 1 }, batchSize: 500 }).toArray(),
   ])
   return buildSummary({ today, month, records: recordDocs, notes: noteDocs })
 })
