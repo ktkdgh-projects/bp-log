@@ -1,6 +1,45 @@
-/* 색·폰트 토큰 (화면 기획 후 채운다) */
+/* 색·폰트 토큰 */
 :root {
-  --bg: #ffffff;
-  --text: #1a1a1a;
-  --font: system-ui, sans-serif;
+  --bg: #f4f5f2;
+  --card: #ffffff;
+  --soft: #f4f5f2;
+  --soft-2: #ecefea;
+  --line: #e3e6e1;
+  --line-strong: #d5dad6;
+  --text: #17201d;
+  --text-2: #3c4642;
+  --sub: #5a6560;
+  --mute: #8a948f;
+  --accent: #1f5f55;
+  --accent-dark: #163f39;
+  --accent-soft: #e4f0ec;
+  --focus: #d3e6e0;
+  --danger: #a3271f;
+  --danger-soft: #f6e0dd;
+
+  /* 혈압 등급: 색상뿐 아니라 명도도 단계마다 다르다 */
+  --g-normal: #5b95cf;
+  --g-elevated: #ecc35a;
+  --g-prehigh: #e39a3b;
+  --g-stage1: #d2602a;
+  --g-stage2: #8e1f1a;
+  --g-normal-bg: #e3eef8;
+  --g-normal-fg: #1e4f80;
+  --g-elevated-bg: #fbf3d9;
+  --g-elevated-fg: #6e5306;
+  --g-prehigh-bg: #fbe9d4;
+  --g-prehigh-fg: #7a4706;
+  --g-stage1-bg: #f8e1d4;
+  --g-stage1-fg: #8a3510;
+  --g-stage2-bg: #f4dad7;
+  --g-stage2-fg: #7a1a15;
+
+  --font: 'IBM Plex Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  --radius: 20px;
+  --radius-sm: 14px;
+  --page-width: 1200px;
+  --nav-h: 68px;
+  --fast: 120ms;
+  --normal: 220ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
