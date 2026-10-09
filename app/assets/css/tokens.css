@@ -1,0 +1,6 @@
+/* 색·폰트 토큰 (화면 기획 후 채운다) */
+:root {
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --font: system-ui, sans-serif;
+}
