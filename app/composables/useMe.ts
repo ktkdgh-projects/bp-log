@@ -16,5 +16,11 @@ export function useMe() {
     return me.value
   }
 
-  return { me, refresh, ensure }
+  async function logout() {
+    await $fetch('/api/auth/logout', { method: 'POST' })
+    me.value = null
+    await navigateTo('/login')
+  }
+
+  return { me, refresh, ensure, logout }
 }

@@ -12,7 +12,6 @@ const PATHS: Record<string, string> = {
   'check': '<path d="M20 6L9 17l-5-5"/>',
   'down': '<path d="M7 7l10 10M17 9v8H9"/>',
   'up': '<path d="M7 17L17 7M9 7h8v8"/>',
-  'flat': '<path d="M4 12h16M14 6l6 6-6 6"/>',
   'alert': '<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/>',
   'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>',
   'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',

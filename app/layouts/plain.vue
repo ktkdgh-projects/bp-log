@@ -1,17 +1,13 @@
+<script setup lang="ts">
+// 로그인·약관처럼 로그인 전 화면. PC 화면 배치는 각 페이지가 직접 잡는다
+const { isMobile } = useDevice()
+</script>
+
 <template>
-  <main class="plain">
-    <slot />
-  </main>
+  <MobilePlain v-if="isMobile"><slot /></MobilePlain>
+  <main v-else class="desk-plain"><slot /></main>
 </template>
 
 <style scoped>
-.plain {
-  min-height: 100dvh;
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: calc(12px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-}
+.desk-plain { min-height: 100dvh; display: flex; flex-direction: column; }
 </style>
