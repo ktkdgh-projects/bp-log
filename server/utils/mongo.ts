@@ -1,4 +1,63 @@
-import { MongoClient, type Db } from 'mongodb'
+import { MongoClient, type Db, type ObjectId } from 'mongodb'
+import type { Average, Reading, Session } from '#shared/types'
+
+export interface UserDoc {
+  _id: ObjectId
+  email: string
+  passwordHash: string
+  nickname: string
+  consent: { termsAt: Date, healthAt: Date }
+  createdAt: Date
+  lastSeenAt: Date
+}
+
+export interface SessionDoc {
+  _id: ObjectId
+  tokenHash: string
+  prevTokenHash: string | null
+  prevValidUntil: Date | null
+  userId: ObjectId
+  device: string
+  remember: boolean
+  createdAt: Date
+  lastUsedAt: Date
+  rotatedAt: Date
+  expiresAt: Date
+}
+
+export interface RecordDoc {
+  _id: ObjectId
+  userId: ObjectId
+  date: string
+  session: Session
+  readings: Reading[]
+  avg: Average
+  measuredAt: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface NoteDoc {
+  _id: ObjectId
+  userId: ObjectId
+  date: string
+  tags: string[]
+  memo: string
+  updatedAt: Date
+}
+
+export interface LoginFailDoc {
+  _id: string
+  count: number
+  lockedUntil: Date | null
+  expireAt: Date
+}
+
+export interface RateLimitDoc {
+  _id: string
+  count: number
+  expireAt: Date
+}
 
 // 서버리스 인스턴스와 dev HMR 재로드 사이에서 연결을 재사용하려고 전역에 둔다
 const globalForMongo = globalThis as typeof globalThis & {
@@ -22,9 +81,30 @@ function getClient(): Promise<MongoClient> {
   return globalForMongo.__mongoClient
 }
 
-// 컬렉션이 생기면 여기에 인덱스를 추가한다
-async function ensureIndexes(_db: Db) {
-  await Promise.all([])
+async function ensureIndexes(db: Db) {
+  await Promise.all([
+    db.collection('users').createIndexes([
+      { key: { email: 1 }, unique: true },
+    ]),
+    db.collection('sessions').createIndexes([
+      { key: { tokenHash: 1 }, unique: true },
+      { key: { prevTokenHash: 1 } },
+      { key: { userId: 1 } },
+      { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+    ]),
+    db.collection('records').createIndexes([
+      { key: { userId: 1, date: 1, session: 1 }, unique: true },
+    ]),
+    db.collection('notes').createIndexes([
+      { key: { userId: 1, date: 1 }, unique: true },
+    ]),
+    db.collection('loginFails').createIndexes([
+      { key: { expireAt: 1 }, expireAfterSeconds: 0 },
+    ]),
+    db.collection('rateLimits').createIndexes([
+      { key: { expireAt: 1 }, expireAfterSeconds: 0 },
+    ]),
+  ])
 }
 
 // DB 이름은 연결 문자열 경로(…mongodb.net/<db>)에서 가져온다
@@ -40,5 +120,12 @@ export async function useDb(): Promise<Db> {
 
 export async function useCollections() {
   const db = await useDb()
-  return {}
+  return {
+    users: db.collection<UserDoc>('users'),
+    sessions: db.collection<SessionDoc>('sessions'),
+    records: db.collection<RecordDoc>('records'),
+    notes: db.collection<NoteDoc>('notes'),
+    loginFails: db.collection<LoginFailDoc>('loginFails'),
+    rateLimits: db.collection<RateLimitDoc>('rateLimits'),
+  }
 }
