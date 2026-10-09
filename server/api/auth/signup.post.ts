@@ -8,14 +8,14 @@ export default defineEventHandler(async (event) => {
   if (body?.agreeTerms !== true || body?.agreeHealth !== true) {
     throw createError({ statusCode: 400, message: '필수 항목에 모두 동의해야 가입할 수 있어요.' })
   }
-  const email = readEmail(body.email)
+  const username = readUsername(body.username)
   const password = readPassword(body.password)
   const nickname = readNickname(body.nickname)
 
   const { users } = await useCollections()
   const now = new Date()
   const doc = {
-    email,
+    username,
     passwordHash: await hashPassword(password),
     nickname,
     consent: { termsAt: now, healthAt: now },
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   }
   catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
-      throw createError({ statusCode: 409, message: '이미 가입된 이메일이에요. 로그인해 주세요.' })
+      throw createError({ statusCode: 409, message: '이미 쓰고 있는 아이디예요. 다른 아이디를 골라 주세요.' })
     }
     throw error
   }

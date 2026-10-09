@@ -44,7 +44,7 @@ export interface DayResponse {
 }
 
 export interface MeUser {
-  email: string
+  username: string
   nickname: string
   createdAt: string
 }
@@ -61,10 +61,24 @@ export interface Insight {
   body: string
 }
 
+export interface StatPoint {
+  date: string
+  sys: number
+  dia: number
+}
+
+// 기간 평균 + 그 기간의 최저·최고(수축기 기준)
 export interface PeriodStat {
   sys: number
   dia: number
   count: number
+  min: StatPoint
+  max: StatPoint
+}
+
+export interface SessionStats {
+  morning: PeriodStat | null
+  evening: PeriodStat | null
 }
 
 export interface SeriesPoint {
@@ -74,14 +88,15 @@ export interface SeriesPoint {
 }
 
 export interface SummaryResponse {
-  days: number
   today: string
+  // 최근 동향: 고른 달과 상관없이 오늘 기준
   headline: Insight
   insights: Insight[]
-  week: { morning: PeriodStat | null, evening: PeriodStat | null }
-  lastWeek: { morning: PeriodStat | null, evening: PeriodStat | null }
+  week: SessionStats
+  lastWeek: SessionStats
+  recent: SeriesPoint[]
+  // 고른 달
+  month: string
   series: SeriesPoint[]
-  peak: { date: string, session: Session, sys: number, dia: number } | null
-  recorded: number
-  expected: number
+  monthStats: SessionStats & { recorded: number, expected: number }
 }

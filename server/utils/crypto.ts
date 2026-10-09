@@ -26,7 +26,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(key, expected)
 }
 
-// 없는 이메일로 로그인해도 응답 시간이 같도록 쓰는 가짜 해시
+// 없는 아이디로 로그인해도 응답 시간이 같도록 쓰는 가짜 해시
 let dummyHash: Promise<string> | undefined
 export function dummyPasswordHash(): Promise<string> {
   dummyHash ??= hashPassword(randomBytes(16).toString('hex'))

@@ -6,6 +6,7 @@ export default defineEventHandler(async (event): Promise<RecordDto> => {
 
   const body = await readBody<Record<string, unknown>>(event)
   const date = readDate(body?.date)
+  assertRecordEditable(date)
   const session = readSession(body?.session)
   const readings = readReadings(body?.readings)
   const avg = averageOf(readings)

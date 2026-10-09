@@ -1,10 +1,11 @@
-import type { Average, Insight, PeriodStat, SeriesPoint, Session, SummaryResponse } from '../types'
+import type { Average, Insight, PeriodStat, SeriesPoint, Session, SessionStats, SummaryResponse } from '../types'
 import { gradeOf } from './bp'
-import { addDays, dateRange } from './kst'
+import { addDays, dateRange, daysInMonth } from './kst'
 
 export interface SummaryInput {
   today: string
-  days: number
+  // 그래프·월 통계를 볼 달 (YYYY-MM)
+  month: string
   records: { date: string, session: Session, avg: Average }[]
   notes: { date: string, tags: string[] }[]
 }
@@ -16,12 +17,20 @@ const MORNING_SURGE = 15
 const TAG_MIN_DAYS = 3
 const TAG_DELTA = 3
 
-function statOf(values: Average[]): PeriodStat | null {
+function statOf(values: { date: string, v: Average }[]): PeriodStat | null {
   if (!values.length) return null
+  let min = values[0]!
+  let max = values[0]!
+  for (const x of values) {
+    if (x.v.sys < min.v.sys || (x.v.sys === min.v.sys && x.v.dia < min.v.dia)) min = x
+    if (x.v.sys > max.v.sys || (x.v.sys === max.v.sys && x.v.dia > max.v.dia)) max = x
+  }
   return {
-    sys: Math.round(values.reduce((s, v) => s + v.sys, 0) / values.length),
-    dia: Math.round(values.reduce((s, v) => s + v.dia, 0) / values.length),
+    sys: Math.round(values.reduce((s, x) => s + x.v.sys, 0) / values.length),
+    dia: Math.round(values.reduce((s, x) => s + x.v.dia, 0) / values.length),
     count: values.length,
+    min: { date: min.date, sys: min.v.sys, dia: min.v.dia },
+    max: { date: max.date, sys: max.v.sys, dia: max.v.dia },
   }
 }
 
@@ -41,7 +50,7 @@ function combinedSys(stats: (PeriodStat | null)[]): number | null {
   return count ? sum / count : null
 }
 
-export function buildSummary({ today, days, records, notes }: SummaryInput): SummaryResponse {
+export function buildSummary({ today, month, records, notes }: SummaryInput): SummaryResponse {
   const byDate = new Map<string, SeriesPoint>()
   for (const r of records) {
     const point = byDate.get(r.date) ?? { date: r.date, morning: null, evening: null }
@@ -49,13 +58,17 @@ export function buildSummary({ today, days, records, notes }: SummaryInput): Sum
     byDate.set(r.date, point)
   }
   const pick = (from: string, to: string, session: Session) =>
-    dateRange(from, to).map(d => byDate.get(d)?.[session]).filter((v): v is Average => !!v)
+    dateRange(from, to).flatMap((date) => {
+      const v = byDate.get(date)?.[session]
+      return v ? [{ date, v }] : []
+    })
+  const statsOf = (from: string, to: string): SessionStats => ({ morning: statOf(pick(from, to, 'morning')), evening: statOf(pick(from, to, 'evening')) })
 
   const weekFrom = addDays(today, -6)
   const lastFrom = addDays(today, -13)
   const lastTo = addDays(today, -7)
-  const week = { morning: statOf(pick(weekFrom, today, 'morning')), evening: statOf(pick(weekFrom, today, 'evening')) }
-  const lastWeek = { morning: statOf(pick(lastFrom, lastTo, 'morning')), evening: statOf(pick(lastFrom, lastTo, 'evening')) }
+  const week = statsOf(weekFrom, today)
+  const lastWeek = statsOf(lastFrom, lastTo)
 
   const headline = buildHeadline(week, lastWeek)
   const insights: Insight[] = []
@@ -107,9 +120,8 @@ export function buildSummary({ today, days, records, notes }: SummaryInput): Sum
   tagInsight('짜게 먹음', false)
   tagInsight('잠 부족', false)
 
-  // 기록 습관
-  const recentFrom = addDays(today, -(Math.min(days, 14) - 1))
-  const recentDays = dateRange(recentFrom, today)
+  // 기록 습관 (최근 7일)
+  const recentDays = dateRange(weekFrom, today)
   const recorded = recentDays.reduce((n, d) => n + (byDate.get(d)?.morning ? 1 : 0) + (byDate.get(d)?.evening ? 1 : 0), 0)
   const expected = recentDays.length * 2
   if (recorded > 0) {
@@ -121,24 +133,24 @@ export function buildSummary({ today, days, records, notes }: SummaryInput): Sum
     })
   }
 
-  const seriesFrom = addDays(today, -(days - 1))
-  const series = dateRange(seriesFrom, today).map(d => byDate.get(d) ?? { date: d, morning: null, evening: null })
+  const pointOf = (d: string): SeriesPoint => byDate.get(d) ?? { date: d, morning: null, evening: null }
+  const recent = recentDays.map(pointOf)
 
-  let peak: SummaryResponse['peak'] = null
-  for (const p of series) {
-    for (const session of ['morning', 'evening'] as const) {
-      const v = p[session]
-      if (v && (!peak || v.sys > peak.sys)) peak = { date: p.date, session, sys: v.sys, dia: v.dia }
-    }
+  // 고른 달: 이번 달이면 오늘까지만
+  const monthFrom = `${month}-01`
+  const monthEnd = `${month}-${String(daysInMonth(month)).padStart(2, '0')}`
+  const monthTo = monthEnd < today ? monthEnd : today
+  const series = dateRange(monthFrom, monthTo).map(pointOf)
+  const monthStats = {
+    ...statsOf(monthFrom, monthTo),
+    recorded: series.reduce((n, p) => n + (p.morning ? 1 : 0) + (p.evening ? 1 : 0), 0),
+    expected: series.length * 2,
   }
 
-  return { days, today, headline, insights, week, lastWeek, series, peak, recorded, expected }
+  return { today, headline, insights, week, lastWeek, recent, month, series, monthStats }
 }
 
-function buildHeadline(
-  week: { morning: PeriodStat | null, evening: PeriodStat | null },
-  lastWeek: { morning: PeriodStat | null, evening: PeriodStat | null },
-): Insight {
+function buildHeadline(week: SessionStats, lastWeek: SessionStats): Insight {
   if (!week.morning && !week.evening) {
     return { tone: 'empty', title: '아직 이번 주 기록이 없어요', body: '아침에 일어나서, 자기 전에 한 번씩. 1분 간격으로 2번 재서 넣어 주세요.' }
   }

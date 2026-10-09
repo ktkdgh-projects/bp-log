@@ -3,7 +3,9 @@ import type { Average, Reading, Session } from '#shared/types'
 
 export interface UserDoc {
   _id: ObjectId
-  email: string
+  // 로그인 아이디. 이메일로 가입했던 예전 계정은 이메일이 그대로 아이디가 된다
+  username: string
+  email?: string
   passwordHash: string
   nickname: string
   consent: { termsAt: Date, healthAt: Date }
@@ -17,7 +19,6 @@ export interface SessionDoc {
   prevTokenHash: string | null
   prevValidUntil: Date | null
   userId: ObjectId
-  device: string
   remember: boolean
   createdAt: Date
   lastUsedAt: Date
@@ -81,10 +82,19 @@ function getClient(): Promise<MongoClient> {
   return globalForMongo.__mongoClient
 }
 
+// 이메일 가입 → 아이디 가입으로 바꾸면서 예전 계정에 아이디를 채우고 이메일 유일 인덱스를 없앤다
+async function migrateUsers(db: Db) {
+  const users = db.collection('users')
+  await users.updateMany({ username: { $exists: false }, email: { $type: 'string' } }, [{ $set: { username: '$email' } }])
+  const indexes = await users.indexes().catch(() => [])
+  if (indexes.some(i => i.name === 'email_1')) await users.dropIndex('email_1')
+}
+
 async function ensureIndexes(db: Db) {
+  await migrateUsers(db)
   await Promise.all([
     db.collection('users').createIndexes([
-      { key: { email: 1 }, unique: true },
+      { key: { username: 1 }, unique: true },
     ]),
     db.collection('sessions').createIndexes([
       { key: { tokenHash: 1 }, unique: true },

@@ -33,16 +33,6 @@ export function clearSessionCookie(event: H3Event) {
   deleteCookie(event, COOKIE_NAME, { path: '/' })
 }
 
-// 순서가 중요하다: Edge·Whale UA에도 Chrome이, Android UA에도 Linux가 들어 있다
-const BROWSERS: [RegExp, string][] = [[/Edg\//, 'Edge'], [/Whale\//, 'Whale'], [/Chrome\//, 'Chrome'], [/Firefox\//, 'Firefox'], [/Safari\//, 'Safari']]
-const SYSTEMS: [RegExp, string][] = [[/Windows/, 'Windows'], [/Android/, 'Android'], [/iPhone|iPad/, 'iOS'], [/Mac OS X/, 'macOS'], [/Linux/, 'Linux']]
-
-function describeDevice(userAgent = ''): string {
-  const browser = BROWSERS.find(([pattern]) => pattern.test(userAgent))?.[1] ?? '브라우저'
-  const os = SYSTEMS.find(([pattern]) => pattern.test(userAgent))?.[1] ?? '알 수 없는 기기'
-  return `${browser} · ${os}`
-}
-
 export async function createSession(event: H3Event, userId: ObjectId, remember: boolean) {
   const { sessions } = await useCollections()
   const token = randomToken()
@@ -52,7 +42,6 @@ export async function createSession(event: H3Event, userId: ObjectId, remember: 
     prevTokenHash: null,
     prevValidUntil: null,
     userId,
-    device: describeDevice(getHeader(event, 'user-agent')),
     remember,
     createdAt: now,
     lastUsedAt: now,

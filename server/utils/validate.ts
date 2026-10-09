@@ -1,17 +1,17 @@
 import type { NoteDto, Reading, RecordDto, Session } from '#shared/types'
 import type { NoteDoc, RecordDoc } from './mongo'
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/
 const OLDEST_DAYS = 366 * 3
 
 function bad(message: string): never {
   throw createError({ statusCode: 400, message })
 }
 
-export function readEmail(value: unknown): string {
-  const email = typeof value === 'string' ? value.trim().toLowerCase() : ''
-  if (!email || email.length > 254 || !EMAIL_PATTERN.test(email)) bad('이메일 형식을 확인해 주세요.')
-  return email
+export function readUsername(value: unknown): string {
+  const username = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (!USERNAME_PATTERN.test(username)) bad('아이디는 영문 소문자·숫자·밑줄(_)로 4–20자예요.')
+  return username
 }
 
 export function readPassword(value: unknown): string {
@@ -40,6 +40,13 @@ export function readDate(value: unknown): string {
   if (value > today) bad('미래 날짜에는 기록할 수 없어요.')
   if (value < addDays(today, -OLDEST_DAYS)) bad('너무 오래된 날짜예요.')
   return value
+}
+
+// 혈압 기록 쓰기(저장·삭제)는 최근 3일만
+export function assertRecordEditable(date: string) {
+  if (!canEditRecord(date, kstToday())) {
+    throw createError({ statusCode: 403, message: `혈압 기록은 ${EDIT_DAYS}일 안에만 넣고 고칠 수 있어요.` })
+  }
 }
 
 function readNumber(value: unknown, name: string, min: number, max: number): number {

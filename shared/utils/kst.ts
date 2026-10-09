@@ -2,7 +2,7 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const MONTH_PATTERN = /^\d{4}-\d{2}$/
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
 // UTC로 도는 서버에서도 한국 날짜가 나오도록 오프셋을 더한 뒤 UTC 기준으로 자른다
 export function toKstDate(at: Date = new Date()): string {

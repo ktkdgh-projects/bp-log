@@ -44,6 +44,17 @@ export const MIN_READINGS = 1
 // 두 번 잰 수축기 차이가 이만큼 나면 한 번 더 재기를 권한다
 export const RETAKE_GAP = 10
 
+// 혈압 기록은 오늘 포함 3일(오늘·어제·그제) 안에만 넣고 고치고 지울 수 있다
+export const EDIT_DAYS = 3
+
+export function editableFrom(today: string): string {
+  return addDays(today, -(EDIT_DAYS - 1))
+}
+
+export function canEditRecord(date: string, today: string): boolean {
+  return date <= today && date >= editableFrom(today)
+}
+
 export const TAGS = ['운동함', '커피', '음주', '짜게 먹음', '잠 부족', '스트레스'] as const
 
 export function averageOf(readings: Reading[]): Average {
