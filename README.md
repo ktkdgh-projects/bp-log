@@ -10,10 +10,14 @@
 
 ## 기능
 
-- **회원**: 이메일·비밀번호·닉네임 가입, 이용약관·건강정보(민감정보) 필수 동의, 로그인 유지 30일
-- **달력**: 날짜마다 아침·저녁 막대를 등급 색으로. 넓은 화면은 숫자까지. 날짜를 누르면 회차별 값·메모 태그
-- **기록 입력**: 시간대로 아침/저녁 자동 선택, 숫자 키패드(자릿수 차면 다음 칸), 1회차 후 1분 타이머, 수축기 차이 10 이상이면 3회차 권장, 키보드 입력 지원
-- **추이**: 7·14·30·90일 그래프(수축기/이완기), 지난주 대비 동향 문구, 아침·저녁 차이, 메모 태그와 다음 날 아침 혈압 비교, 기록 횟수
+휴대폰과 PC는 화면을 따로 그린다. 서버가 User-Agent로 고르고, PC라도 창이 768px보다 좁으면 모바일 화면으로 바꾼다. 페이지마다 스크롤 없이 한 화면에 들어가게 짠다.
+
+- **회원**: 아이디·비밀번호·닉네임 가입 (예전 이메일 가입 계정은 이메일이 아이디), 이용약관·건강정보(민감정보) 필수 동의, 로그인 유지 30일
+- **달력**: 휴대폰은 날짜마다 아침·저녁 막대를 등급 색으로, PC는 숫자까지. 날짜를 누르면 회차별 값·메모 태그(휴대폰은 아래 시트, PC는 옆 패널)
+- **기록 입력**: 휴대폰은 입력 화면(화면 숫자 키패드라 휴대폰 키보드는 안 뜸), PC는 모달(입력칸에 키보드로). 시간대로 아침/저녁 자동 선택, 자릿수 차면 다음 칸, 1회차 후 1분 타이머, 수축기 차이 10 이상이면 3회차 권장
+- **수정 기한**: 혈압 기록은 오늘·어제·그제(3일) 안에만 넣고 고치고 지울 수 있다. 서버도 막는다(`shared/utils/bp.ts`의 `EDIT_DAYS`). 메모·태그는 기한 없음
+- **추이**: 달별 그래프(수축기/이완기, 아침·저녁 선마다 최고·최저 점에 숫자 표시)와 그 달 아침·저녁 평균·최저·최고, 기록률. 날짜와 상관없이 오늘 기준 최근 7일 기록표·평균·지난주 대비 동향·메모 태그 비교
+- **약관**: 이용약관·개인정보처리방침은 모달(휴대폰은 아래 시트)로 열고, /terms·/privacy 주소도 그대로 둔다
 - **설정**: 닉네임·비밀번호 변경(다른 기기 로그아웃), 측정 가이드, 로그아웃, 탈퇴(기록 즉시 삭제)
 
 ## 측정·판정 기준
@@ -39,6 +43,8 @@ cp .env.example .env   # NUXT_MONGO_URI 채우기
 npm run dev
 ```
 
+로컬에서 운영 데이터를 건드리지 않으려면 DB 이름만 바꾼 `.env.dev`(…mongodb.net/bp-log-dev)를 만들고 `npx nuxt dev --dotenv .env.dev`로 띄운다.
+
 DB 연결 확인: `GET /api/health` → `{ "ok": true, "db": "bp-log" }`
 
 ## 구조
@@ -46,10 +52,13 @@ DB 연결 확인: `GET /api/health` → `{ "ok": true, "db": "bp-log" }`
 ```
 app/
 ├ assets/css/            # tokens.css(색·등급색), base.css(버튼·입력 공통)
-├ components/            # MonthCalendar, DaySheet, TrendCard, TrendChart, InsightList, GradeChip …
-├ composables/useMe.ts   # 로그인 사용자 상태
+├ components/
+│ ├ mobile/              # 휴대폰 화면 (Shell, Home, Calendar, DaySheet, Record, Trend, Settings, Sheet)
+│ ├ desktop/             # PC 화면 (Shell, Home, Calendar, Record, RecordModal, Trend, Settings, AuthFrame)
+│ └ …                    # 공용: DayDetail, TrendChart, InsightList, GradeChip, MeasureGuide …
+├ composables/           # 화면 공용 로직: useDevice, useMe, useHome, useDay, useRecordForm, useRecordModal, useTrend, useAccount
 ├ middleware/auth.global.ts  # 비로그인 → /login
-├ layouts/               # default(상단·하단 메뉴), plain(로그인·입력)
+├ layouts/               # default(모바일 하단 메뉴 / PC 사이드바), focus(입력), plain(로그인·약관)
 └ pages/                 # index(달력), record, trend, settings, login, signup, terms, privacy
 shared/
 ├ types/                 # 앱·서버 공용 타입
@@ -68,9 +77,9 @@ public/                  # 아이콘, manifest(홈 화면에 추가)
 
 ## 보안
 
-- 비밀번호는 scrypt 해시만 저장, 없는 이메일도 같은 시간 걸리게 가짜 해시로 비교
+- 비밀번호는 scrypt 해시만 저장, 없는 아이디도 같은 시간 걸리게 가짜 해시로 비교
 - 세션 토큰은 httpOnly 쿠키, DB엔 sha256만 저장. 7일마다 토큰 교체
-- 같은 이메일 5번 실패 → 10분 잠금, IP별 요청 제한(가입 5회/시간, 로그인 20회/분)
+- 같은 아이디 5번 실패 → 10분 잠금, IP별 요청 제한(가입 5회/시간, 로그인 20회/분)
 - 쓰기 요청은 같은 출처만 허용, 운영에선 CSP 헤더
 
 ## 배포 (Vercel)
