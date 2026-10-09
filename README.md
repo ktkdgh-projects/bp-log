@@ -56,13 +56,14 @@ app/
 │ ├ mobile/              # 휴대폰 화면 (Shell, Home, Calendar, DaySheet, Record, Trend, Settings, Sheet)
 │ ├ desktop/             # PC 화면 (Shell, Home, Calendar, Record, RecordModal, Trend, Settings, AuthFrame)
 │ └ …                    # 공용: DayDetail, TrendChart, InsightList, GradeChip, MeasureGuide …
-├ composables/           # 화면 공용 로직: useDevice, useMe, useHome, useDay, useRecordForm, useRecordModal, useTrend, useAccount
+├ composables/           # 화면 공용 로직: useDevice, useMe, useHome, useDay, useRecordForm, useRecordModal, useTrend, useMonthKeys(← → 달 넘기기), useAccount
+├ utils/cache.ts         # 탭·달을 오갈 때 받아 둔 데이터를 먼저 보여 주고 뒤에서 새로 받기, 앞뒤 달 미리 받기
 ├ middleware/auth.global.ts  # 비로그인 → /login
 ├ layouts/               # default(모바일 하단 메뉴 / PC 사이드바), focus(입력), plain(로그인·약관)
 └ pages/                 # index(달력), record, trend, settings, login, signup, terms, privacy
 shared/
 ├ types/                 # 앱·서버 공용 타입
-└ utils/                 # kst(한국 날짜), bp(등급·평균), insights(동향 계산)
+└ utils/                 # kst(한국 날짜), bp(등급·평균), insights(동향 계산), user(내 정보 응답)
 server/
 ├ middleware/auth.ts     # 다른 사이트 쓰기 요청 차단 + 세션 읽기
 ├ utils/                 # mongo, session, crypto(scrypt), loginLock, rateLimit, validate
@@ -86,6 +87,7 @@ public/                  # 아이콘, manifest(홈 화면에 추가)
 
 - 프로젝트: `ktkdghs-projects-70ff8764/bp-log`, 운영 도메인 https://bp-log-six.vercel.app
 - GitHub `main`에 push하면 Production, 다른 브랜치는 Preview로 자동 배포된다
+- 서버 함수는 `vercel.json`에서 서울(`icn1`)로 고정한다. Atlas 클러스터가 서울(AWS ap-northeast-2)이라, 기본 지역(미국 동부)에서 돌면 DB를 오갈 때마다 태평양을 건넌다
 - 환경 변수는 Vercel 프로젝트 설정에 둔다 (`NUXT_MONGO_URI` — Production·Preview·Development, Sensitive)
 - 변수를 추가하면 `.env.example`에 이름을 적고 `vercel env add <NAME> <env>`로 등록한 뒤 재배포한다
 - Vercel은 고정 IP가 없어서 Atlas Network Access에 `0.0.0.0/0`이 열려 있어야 한다
