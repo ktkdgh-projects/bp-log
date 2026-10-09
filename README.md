@@ -39,6 +39,15 @@ public/
 
 `.env.example`에 이름만 있다. 실제 값은 `.env`(로컬)와 Vercel 환경 변수에만 두고 커밋하지 않는다.
 
+## 배포 (Vercel)
+
+- 프로젝트: `ktkdghs-projects-70ff8764/bp-log`, 운영 도메인 https://bp-log-six.vercel.app
+- GitHub `main`에 push하면 Production, 다른 브랜치는 Preview로 자동 배포된다
+- 환경 변수는 Vercel 프로젝트 설정에 둔다 (`NUXT_MONGO_URI` — Production·Preview·Development, Sensitive)
+- 변수를 추가하면 `.env.example`에 이름을 적고 `vercel env add <NAME> <env>`로 등록한 뒤 재배포한다
+- Vercel은 고정 IP가 없어서 Atlas Network Access에 `0.0.0.0/0`이 열려 있어야 한다
+- 배포 확인: `GET https://bp-log-six.vercel.app/api/health`
+
 ## 커밋 규칙
 
 `type(scope): 간단한 설명`
