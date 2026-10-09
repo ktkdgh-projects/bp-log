@@ -11,12 +11,30 @@ export async function useHome() {
   const [{ data, refresh: refreshMonth, pending }, { data: summary, refresh: refreshSummary }] = await Promise.all([
     useFetch<MonthResponse>('/api/records', {
       query: { month },
-      key: 'month',
-      default: () => ({ month: month.value, records: [], notes: [] }),
+      key: computed(() => monthKey(month.value)),
+      getCachedData: staleWhileRevalidate,
+      // 받기 전 빈 자리. month가 비어 있어 날짜 패널이 이걸 그 달 데이터로 착각하지 않는다
+      default: () => ({ month: '', records: [], notes: [] }),
     }),
-    // 홈은 최근 7일 동향만 쓴다 (이번 달 기준)
-    useFetch<SummaryResponse>('/api/summary', { key: 'summary-home' }),
+    // 홈은 최근 7일 동향만 쓴다. 추이 화면의 이번 달과 같은 키라서 탭을 옮기면 바로 보인다
+    useFetch<SummaryResponse>('/api/summary', {
+      query: { month: thisMonth },
+      key: summaryKey(thisMonth),
+      getCachedData: staleWhileRevalidate,
+    }),
   ])
+
+  // ← → 로 넘길 앞뒤 달을 미리 받아 둔다
+  if (import.meta.client) {
+    const nuxtApp = useNuxtApp()
+    watch(month, (m) => {
+      setTimeout(() => {
+        for (const next of [addMonths(m, -1), addMonths(m, 1)]) {
+          if (next <= thisMonth) prefetchData(nuxtApp, monthKey(next), () => $fetch<MonthResponse>('/api/records', { query: { month: next } }))
+        }
+      }, 200)
+    }, { immediate: true })
+  }
 
   async function refresh() {
     await Promise.all([refreshMonth(), refreshSummary()])
@@ -24,5 +42,8 @@ export async function useHome() {
 
   const slotDone = computed(() => data.value.records.some(r => r.date === slot.value.date && r.session === slot.value.session))
 
-  return { today, thisMonth, month, year, mon, canNext, go, goToday, setMonth, selected, data, pending, summary, refresh, slot, slotDone }
+  // 날짜 패널에 넘길 그 달 데이터. 뒤에서 새로 받는 중에도 들고 있는 걸 쓰고, 아직 하나도 없을 때만 null(기다림)
+  const monthData = computed(() => (data.value.month ? data.value : null))
+
+  return { today, thisMonth, month, year, mon, canNext, go, goToday, setMonth, selected, data, monthData, pending, summary, refresh, slot, slotDone }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { today, thisMonth, month, year, mon, canNext, go, goToday, setMonth, selected, data, pending, refresh } = await useHome()
+const { today, thisMonth, month, year, mon, canNext, go, goToday, setMonth, selected, data, monthData, pending, refresh } = await useHome()
 const { lastSaved } = useRecordModal()
 
 // PC는 옆 패널이 늘 열려 있으니 처음엔 오늘을 보여준다
@@ -26,13 +26,12 @@ const monthStats = computed(() => {
   return { count: recs.length, expected: elapsed * 2, morning: avg('morning'), evening: avg('evening') }
 })
 
-function onKey(e: KeyboardEvent) {
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-  if (e.key === 'ArrowLeft' && e.altKey) go(-1)
-  else if (e.key === 'ArrowRight' && e.altKey && canNext.value) go(1)
-}
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+useMonthKeys(go, canNext)
+
+// 달을 넘기면 옆 패널도 그 달 날짜(이번 달이면 오늘, 아니면 1일)로 옮긴다. 그래야 그 달 데이터에서 바로 꺼내 보여 준다
+watch(month, (m) => {
+  if (selected.value?.slice(0, 7) !== m) selected.value = m === thisMonth ? today : `${m}-01`
+})
 </script>
 
 <template>
@@ -40,9 +39,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <header class="page-head">
       <h1 class="month">{{ year }}년 {{ mon }}월</h1>
       <div class="nav">
-        <button type="button" class="icon-btn" aria-label="이전 달" title="이전 달 (Alt + ←)" @click="go(-1)"><AppIcon name="chevron-left" /></button>
-        <button type="button" class="icon-btn" aria-label="다음 달" title="다음 달 (Alt + →)" :disabled="!canNext" @click="go(1)"><AppIcon name="chevron-right" /></button>
-        <button v-if="month !== thisMonth" type="button" class="btn btn-soft today-btn" @click="goToday(); selected = today">오늘</button>
+        <button type="button" class="icon-btn" aria-label="이전 달" title="이전 달 (←)" @click="go(-1)"><AppIcon name="chevron-left" /></button>
+        <button type="button" class="icon-btn" aria-label="다음 달" title="다음 달 (→)" :disabled="!canNext" @click="go(1)"><AppIcon name="chevron-right" /></button>
+        <button v-if="month !== thisMonth" type="button" class="btn btn-soft today-btn" @click="goToday">오늘</button>
       </div>
 
       <dl class="stats" aria-label="이번 달 요약">
@@ -73,7 +72,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </section>
 
       <aside class="card panel" aria-label="선택한 날짜">
-        <DayDetail v-if="selected" :key="selected" :date="selected" wide @changed="refresh" />
+        <DayDetail v-if="selected" :key="selected" :date="selected" :month="monthData" wide @changed="refresh" />
       </aside>
     </div>
   </div>

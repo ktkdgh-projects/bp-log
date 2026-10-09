@@ -1,6 +1,6 @@
 // 설정 화면의 닉네임·비밀번호·탈퇴 폼 상태
 export function useAccount() {
-  const { me, refresh, logout } = useMe()
+  const { me, refresh, setUser, logout } = useMe()
 
   const nickname = ref(me.value?.nickname ?? '')
   const nickMsg = ref('')
@@ -59,7 +59,7 @@ export function useAccount() {
     withdrawBusy.value = true
     try {
       await $fetch('/api/me', { method: 'DELETE', body: { password: withdrawPw.value } })
-      me.value = null
+      setUser(null)
       await navigateTo('/login')
     }
     catch (error) {

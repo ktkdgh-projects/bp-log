@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { thisMonth, month, year, mon, canNext, go, goToday, metric, summary, pending, monthStats, weekStats, recentRows } = await useTrend()
+useMonthKeys(go, canNext)
 const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.value.recorded / monthStats.value.expected * 100) : 0))
 </script>
 

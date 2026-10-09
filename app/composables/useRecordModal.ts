@@ -16,9 +16,11 @@ export function useRecordModal() {
   }
   async function saved(date: string) {
     state.value = null
+    invalidatePrefetch()
     lastSaved.value = date
     version.value += 1
-    await refreshNuxtData(['month', 'summary-home', 'summary-trend'])
+    // 지금 화면에 떠 있는 달력·통계를 다시 받는다 (안 보이는 달은 다음에 열 때 새로 받는다)
+    await refreshNuxtData()
   }
 
   return { state, version, lastSaved, open, close, saved }

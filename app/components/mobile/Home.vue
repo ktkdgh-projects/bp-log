@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PeriodStat } from '#shared/types'
 
-const { today, thisMonth, month, year, mon, canNext, go, goToday, selected, data, pending, summary, refresh, slot, slotDone } = await useHome()
+const { today, thisMonth, month, year, mon, canNext, go, goToday, selected, data, monthData, pending, summary, refresh, slot, slotDone } = await useHome()
 
 // 한 화면에 들어가게 동향은 한 줄 + 아침·저녁 7일 평균만
 const week = computed(() => (['morning', 'evening'] as const).map((session) => {
@@ -50,7 +50,7 @@ const week = computed(() => (['morning', 'evening'] as const).map((session) => {
       {{ SESSION_LABEL[slot.session] }} {{ slotDone ? '기록 고치기' : '기록하기' }}
     </NuxtLink>
 
-    <MobileDaySheet :date="selected" @close="selected = null" @changed="refresh" />
+    <MobileDaySheet :date="selected" :month="monthData" @close="selected = null" @changed="refresh" />
   </div>
 </template>
 

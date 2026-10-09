@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { MeUser } from '#shared/types'
+
 definePageMeta({ layout: 'plain' })
 useHead({ title: '로그인 · bp-log' })
 
 const route = useRoute()
-const { refresh } = useMe()
+const { setUser } = useMe()
 const { isMobile } = useDevice()
 const DesktopAuthFrame = resolveComponent('DesktopAuthFrame')
 
@@ -22,9 +24,9 @@ async function login() {
   failure.value = ''
   busy.value = true
   try {
-    await $fetch('/api/auth/login', { method: 'POST', body: { username: username.value, password: password.value, remember: remember.value } })
+    const res = await $fetch<{ user: MeUser }>('/api/auth/login', { method: 'POST', body: { username: username.value, password: password.value, remember: remember.value } })
     password.value = ''
-    await refresh()
+    setUser(res.user)
     await navigateTo(safeNext(route.query.next))
   }
   catch (error) {

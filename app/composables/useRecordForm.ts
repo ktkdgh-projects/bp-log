@@ -157,6 +157,8 @@ export function useRecordForm(typing: Ref<Cursor | null>, opts: RecordFormOption
       const m = date.value.slice(0, 7)
       const query: Record<string, string> = m === today.slice(0, 7) ? {} : { month: m }
       if (keepDate) query.date = date.value
+      // 달력이 저장 전 캐시를 잠깐 보여 주지 않게 비우고 새로 받게 한다
+      clearNuxtData(key => key.startsWith('month:') || key.startsWith('summary:'))
       await navigateTo({ path: '/', query })
     }
     catch (error) {

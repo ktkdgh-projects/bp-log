@@ -37,9 +37,15 @@ export default defineNuxtConfig({
         { rel: 'manifest', href: '/manifest.webmanifest' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap' },
+        // 글꼴 CSS가 첫 화면을 막지 않게 먼저 시스템 글꼴로 그리고, 받아지면 바꾼다
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap', media: 'print', onload: 'this.media=\'all\'' },
       ],
     },
+  },
+
+  // 화면을 떠나도 받아 둔 데이터를 지우지 않는다. 다시 오면 그걸 먼저 보여 주고 뒤에서 새로 받는다 (app/utils/cache.ts)
+  experimental: {
+    purgeCachedData: false,
   },
 
   // 빈 값은 자리만 잡아둔 것. 실행 시 NUXT_MONGO_URI → mongoUri 식으로 환경 변수가 채운다

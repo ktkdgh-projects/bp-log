@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { MeUser } from '#shared/types'
+
 definePageMeta({ layout: 'plain' })
 useHead({ title: '회원가입 · bp-log' })
 
 const route = useRoute()
-const { refresh } = useMe()
+const { setUser } = useMe()
 const { isMobile } = useDevice()
 const { openDoc } = useDocModal()
 const DesktopAuthFrame = resolveComponent('DesktopAuthFrame')
@@ -35,7 +37,7 @@ async function signup() {
   failure.value = ''
   busy.value = true
   try {
-    await $fetch('/api/auth/signup', {
+    const res = await $fetch<{ user: MeUser }>('/api/auth/signup', {
       method: 'POST',
       body: {
         username: username.value,
@@ -47,7 +49,7 @@ async function signup() {
       },
     })
     password.value = ''
-    await refresh()
+    setUser(res.user)
     await navigateTo(safeNext(route.query.next))
   }
   catch (error) {

@@ -1,27 +1,42 @@
-import type { DayResponse, NoteDto, RecordDto, Session } from '#shared/types'
+import type { DayResponse, MonthResponse, NoteDto, RecordDto, Session } from '#shared/types'
 
 // 날짜 하나의 기록·메모. 모바일 시트와 데스크톱 옆 패널이 같이 쓴다
-export function useDay(date: Ref<string | null>, onChanged: () => void) {
-  const day = ref<DayResponse | null>(null)
+// 달력이 그 달 기록·메모를 이미 들고 있으면(month) 거기서 꺼내 쓰고, 없을 때만 따로 받는다
+// month가 null이면 달력이 그 달을 받는 중이라 따로 받지 않고 기다린다
+export function useDay(date: Ref<string | null>, onChanged: () => void, month?: () => MonthResponse | null | undefined) {
+  const fetched = ref<DayResponse | null>(null)
+  // 지운 기록은 달력 데이터가 새로 올 때까지 먼저 숨긴다
+  const removed = ref<Session[]>([])
   const loading = ref(false)
   const failure = ref('')
   const tags = ref<string[]>([])
   const memo = ref('')
   const savedMemo = ref('')
 
+  function fromMonth(d: string): DayResponse | null {
+    const m = month?.()
+    if (m?.month !== d.slice(0, 7)) return null
+    const pick = (session: Session) => m.records.find(r => r.date === d && r.session === session) ?? null
+    return { date: d, morning: pick('morning'), evening: pick('evening'), note: m.notes.find(n => n.date === d) ?? null }
+  }
+
+  const day = computed<DayResponse | null>(() => {
+    const d = date.value
+    if (!d) return null
+    const base = fromMonth(d) ?? (fetched.value?.date === d ? fetched.value : null)
+    if (!base || !removed.value.length) return base
+    return { ...base, ...Object.fromEntries(removed.value.map(s => [s, null])) }
+  })
+
+  const waiting = computed(() => month?.() === null)
+
   async function load(d: string | null) {
     failure.value = ''
-    if (!d) {
-      day.value = null
-      return
-    }
-    loading.value = !day.value || day.value.date !== d
+    if (!d || waiting.value || fromMonth(d)) return
+    loading.value = fetched.value?.date !== d
     try {
       const res = await $fetch<DayResponse>('/api/records/day', { query: { date: d } })
-      if (date.value !== d) return
-      day.value = res
-      tags.value = res.note?.tags ?? []
-      memo.value = savedMemo.value = res.note?.memo ?? ''
+      if (date.value === d) fetched.value = res
     }
     catch (error) {
       failure.value = errorMessage(error)
@@ -30,9 +45,24 @@ export function useDay(date: Ref<string | null>, onChanged: () => void) {
       loading.value = false
     }
   }
-  watch(date, load, { immediate: true })
-  // PC 기록 모달에서 저장하면 다시 불러온다
+  watch(date, (d) => {
+    removed.value = []
+    load(d)
+  }, { immediate: true })
+  // PC 기록 모달에서 저장하면 다시 불러온다 (달력 데이터에서 꺼내 쓰는 중이면 달력이 새로 받는다)
   watch(useRecordModal().version, () => load(date.value))
+  // 달력 데이터가 새로 오면 지운 기록 숨김을 풀고, 그래도 그 날짜가 없으면 따로 받는다
+  watch(() => month?.(), () => {
+    removed.value = []
+    if (!day.value) load(date.value)
+  })
+
+  // 날짜를 바꿨거나 그날 데이터가 처음 왔을 때만 태그·메모 입력칸을 채운다 (그 뒤로는 입력한 값이 기준)
+  watch(() => [date.value, !!day.value] as const, () => {
+    const note = day.value?.note
+    tags.value = note?.tags ?? []
+    memo.value = savedMemo.value = note?.memo ?? ''
+  }, { immediate: true })
 
   const sessions = computed(() => {
     const d = day.value
@@ -57,6 +87,7 @@ export function useDay(date: Ref<string | null>, onChanged: () => void) {
     try {
       const res = await $fetch<NoteDto>('/api/notes', { method: 'PUT', body: { date: date.value, tags: tags.value, memo: memo.value } })
       savedMemo.value = res.memo
+      invalidatePrefetch()
       onChanged()
     }
     catch (error) {
@@ -78,7 +109,8 @@ export function useDay(date: Ref<string | null>, onChanged: () => void) {
     if (!confirm(`${SESSION_LABEL[session]} 기록을 지울까요?`)) return
     try {
       await $fetch('/api/records', { method: 'DELETE', body: { date: date.value, session } })
-      day.value = { ...day.value, [session]: null }
+      removed.value = [...removed.value, session]
+      invalidatePrefetch()
       onChanged()
     }
     catch (error) {

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { MonthResponse } from '#shared/types'
+
 // 날짜 하나의 아침·저녁 기록과 메모. 모바일은 아래 시트, 데스크톱은 옆 패널이 감싼다
-const props = defineProps<{ date: string, wide?: boolean }>()
+// month: 달력이 들고 있는 그 달 데이터. 있으면 따로 불러오지 않는다
+const props = defineProps<{ date: string, wide?: boolean, month?: MonthResponse | null }>()
 const emit = defineEmits<{ changed: [] }>()
 
-const { loading, failure, tags, memo, sessions, dayAvg, toggleTag, onMemoBlur, remove, day } = useDay(toRef(props, 'date'), () => emit('changed'))
+const { loading, failure, tags, memo, sessions, dayAvg, toggleTag, onMemoBlur, remove, day } = useDay(toRef(props, 'date'), () => emit('changed'), () => props.month)
 // PC(wide)는 기록 모달을 띄우고, 휴대폰은 입력 페이지로 간다
 const { open } = useRecordModal()
 const NuxtLink = resolveComponent('NuxtLink')
