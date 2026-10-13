@@ -1,4 +1,4 @@
-import { MongoClient, type Db, type ObjectId } from 'mongodb'
+import { MongoClient, type Db, type IndexDescription, type ObjectId } from 'mongodb'
 import type { Average, Reading, Session } from '#shared/types'
 
 export interface UserDoc {
@@ -71,7 +71,13 @@ function getClient(): Promise<MongoClient> {
     const { mongoUri } = useRuntimeConfig()
     if (!mongoUri) throw new Error('NUXT_MONGO_URI가 설정되지 않았습니다')
 
-    globalForMongo.__mongoClient = new MongoClient(mongoUri, { maxPoolSize: 10 })
+    globalForMongo.__mongoClient = new MongoClient(mongoUri, {
+      maxPoolSize: 10,
+      // 서버리스 함수가 오래 쉬다 깨면 끊긴 연결을 붙잡지 않게 놀던 연결은 정리한다
+      maxIdleTimeMS: 60_000,
+      // DB를 못 찾으면 기본 30초 대신 빨리 실패해서 함수 시간 초과로 번지지 않게 한다
+      serverSelectionTimeoutMS: 5_000,
+    })
       .connect()
       .catch((error) => {
         // 실패한 Promise를 캐시하면 이후 요청이 전부 실패하므로 비운다
@@ -82,30 +88,32 @@ function getClient(): Promise<MongoClient> {
   return globalForMongo.__mongoClient
 }
 
+// 콜드 스타트마다 돈다. 한꺼번에 보내면 연결을 6개 새로 열어(TLS·인증) 첫 요청과 연결을 다투므로 하나씩 보낸다
 async function ensureIndexes(db: Db) {
-  await Promise.all([
-    db.collection('users').createIndexes([
+  const specs: [string, IndexDescription[]][] = [
+    ['users', [
       { key: { username: 1 }, unique: true },
-    ]),
-    db.collection('sessions').createIndexes([
+    ]],
+    ['sessions', [
       { key: { tokenHash: 1 }, unique: true },
       { key: { prevTokenHash: 1 } },
       { key: { userId: 1 } },
       { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
-    ]),
-    db.collection('records').createIndexes([
+    ]],
+    ['records', [
       { key: { userId: 1, date: 1, session: 1 }, unique: true },
-    ]),
-    db.collection('notes').createIndexes([
+    ]],
+    ['notes', [
       { key: { userId: 1, date: 1 }, unique: true },
-    ]),
-    db.collection('loginFails').createIndexes([
+    ]],
+    ['loginFails', [
       { key: { expireAt: 1 }, expireAfterSeconds: 0 },
-    ]),
-    db.collection('rateLimits').createIndexes([
+    ]],
+    ['rateLimits', [
       { key: { expireAt: 1 }, expireAfterSeconds: 0 },
-    ]),
-  ])
+    ]],
+  ]
+  for (const [name, indexes] of specs) await db.collection(name).createIndexes(indexes)
 }
 
 // DB 이름은 연결 문자열 경로(…mongodb.net/<db>)에서 가져온다

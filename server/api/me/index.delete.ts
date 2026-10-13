@@ -9,10 +9,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const { users, sessions, records, notes } = await useCollections()
-  await records.deleteMany({ userId: user._id })
-  await notes.deleteMany({ userId: user._id })
-  await sessions.deleteMany({ userId: user._id })
+  // 기록부터 지우고 계정은 마지막에. 중간에 실패해도 다시 탈퇴하면 남은 것까지 지워진다
+  await Promise.all([
+    records.deleteMany({ userId: user._id }),
+    notes.deleteMany({ userId: user._id }),
+    sessions.deleteMany({ userId: user._id }),
+  ])
   await users.deleteOne({ _id: user._id })
+  forgetCachedSessions()
   clearSessionCookie(event)
   return { ok: true }
 })

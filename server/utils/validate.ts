@@ -3,6 +3,7 @@ import type { NoteDoc, RecordDoc } from './mongo'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/
 const OLDEST_DAYS = 366 * 3
+export const MAX_PASSWORD_LENGTH = 128
 
 function bad(message: string): never {
   throw createError({ statusCode: 400, message })
@@ -17,7 +18,7 @@ export function readUsername(value: unknown): string {
 export function readPassword(value: unknown): string {
   const password = typeof value === 'string' ? value : ''
   if (password.length < 8) bad('비밀번호는 8자 이상이어야 해요.')
-  if (password.length > 128) bad('비밀번호가 너무 길어요.')
+  if (password.length > MAX_PASSWORD_LENGTH) bad('비밀번호가 너무 길어요.')
   if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) bad('비밀번호에 영문과 숫자를 함께 넣어 주세요.')
   return password
 }

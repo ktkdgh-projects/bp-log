@@ -12,6 +12,22 @@ const ROTATE_AFTER_MS = 7 * DAY_MS
 const ROTATE_GRACE_MS = 60 * 1000
 const TOUCH_INTERVAL_MS = HOUR_MS
 
+// 페이지를 서버에서 그릴 때 안에서 부르는 API(/api/records, /api/summary)도 미들웨어를 다시 거쳐 같은 세션을 또 읽는다
+// 같은 인스턴스에서 몇 초 안에 다시 오면 DB 대신 이걸 쓴다. 로그아웃·비밀번호 변경 등으로 세션이 바뀌면 바로 비운다
+const SESSION_CACHE_MS = 5 * 1000
+const SESSION_CACHE_MAX = 500
+const sessionCache = new Map<string, { session: SessionDoc, user: UserDoc, until: number }>()
+
+function cacheSession(tokenHash: string, session: SessionDoc, user: UserDoc) {
+  // 5초만 쓰는 값이라 다 차면 통째로 비워도 된다
+  if (sessionCache.size >= SESSION_CACHE_MAX) sessionCache.clear()
+  sessionCache.set(tokenHash, { session, user, until: Date.now() + SESSION_CACHE_MS })
+}
+
+export function forgetCachedSessions() {
+  sessionCache.clear()
+}
+
 declare module 'h3' {
   interface H3EventContext {
     user?: UserDoc
@@ -33,8 +49,25 @@ export function clearSessionCookie(event: H3Event) {
   deleteCookie(event, COOKIE_NAME, { path: '/' })
 }
 
-export async function createSession(event: H3Event, userId: ObjectId, remember: boolean) {
+async function dropSession(event: H3Event) {
+  const session = event.context.session
+  if (!session) return
   const { sessions } = await useCollections()
+  await sessions.deleteOne({ _id: session._id })
+  forgetCachedSessions()
+  event.context.session = undefined
+  event.context.user = undefined
+}
+
+// 로그아웃: 이 브라우저의 세션을 지우고 쿠키도 비운다
+export async function endSession(event: H3Event) {
+  await dropSession(event)
+  clearSessionCookie(event)
+}
+
+export async function createSession(event: H3Event, userId: ObjectId, remember: boolean) {
+  // 이 브라우저에 남아 있던 옛 세션은 지우고 새로 만든다
+  const [{ sessions }] = await Promise.all([useCollections(), dropSession(event)])
   const token = randomToken()
   const now = new Date()
   await sessions.insertOne({
@@ -55,8 +88,15 @@ export async function loadSession(event: H3Event) {
   const token = getCookie(event, COOKIE_NAME)
   if (!token) return
 
-  const { sessions, users } = await useCollections()
   const tokenHash = sha256(token)
+  const cached = sessionCache.get(tokenHash)
+  if (cached && cached.until > Date.now()) {
+    event.context.session = cached.session
+    event.context.user = cached.user
+    return
+  }
+
+  const { sessions, users } = await useCollections()
   const now = new Date()
   // 모든 요청이 거치므로 세션과 사용자를 한 번에 가져온다
   const [found] = await sessions.aggregate<SessionDoc & { user: UserDoc[] }>([
@@ -102,6 +142,7 @@ export async function loadSession(event: H3Event) {
     ])
   }
 
+  cacheSession(tokenHash, session, user)
   event.context.session = session
   event.context.user = user
 }
@@ -115,4 +156,5 @@ export function requireUser(event: H3Event): UserDoc {
 export async function revokeSessions(userId: ObjectId, options: { exceptId?: ObjectId } = {}) {
   const { sessions } = await useCollections()
   await sessions.deleteMany({ userId, ...(options.exceptId && { _id: { $ne: options.exceptId } }) })
+  forgetCachedSessions()
 }

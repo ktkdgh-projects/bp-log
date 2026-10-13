@@ -7,15 +7,15 @@ export default defineEventHandler(async (event) => {
   const { users } = await useCollections()
   const [, , user] = await Promise.all([
     rateLimit(event, 'login', 20, 60),
-    username && assertNotLocked(username),
+    username && assertNotLocked(event, username),
     username ? users.findOne({ username }) : null,
   ])
   if (!username || !password) throw createError({ statusCode: 400, message: '아이디와 비밀번호를 입력해 주세요.' })
 
   const ok = await verifyPassword(password, user?.passwordHash ?? await dummyPasswordHash())
   if (!user || !ok) {
-    const left = await recordLoginFail(username)
-    if (left <= 0) throw createError({ statusCode: 429, message: '비밀번호를 5번 틀려서 10분 동안 잠겼어요.' })
+    const left = await recordLoginFail(event, username)
+    if (left <= 0) throw createError({ statusCode: 429, message: '로그인에 여러 번 실패해서 잠겼어요. 잠시 뒤에 다시 시도해 주세요.' })
     throw createError({
       statusCode: 401,
       message: left <= 2
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   }
 
   await Promise.all([
-    clearLoginFails(username),
+    clearLoginFails(event, username),
     users.updateOne({ _id: user._id }, { $set: { lastSeenAt: new Date() } }),
     createSession(event, user._id, body.remember !== false),
   ])

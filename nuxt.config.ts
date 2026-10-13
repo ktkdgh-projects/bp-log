@@ -7,10 +7,16 @@ const CONTENT_SECURITY_POLICY = [
   `img-src 'self' data:`,
   `connect-src 'self'`,
   `manifest-src 'self'`,
+  `object-src 'none'`,
+  `worker-src 'self'`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,
+  `upgrade-insecure-requests`,
 ].join('; ')
+
+// 카메라·마이크·위치 같은 기기 권한은 쓰지 않으니 모두 막는다
+const PERMISSIONS_POLICY = ['camera=()', 'microphone=()', 'geolocation=()', 'payment=()', 'usb=()', 'browsing-topics=()'].join(', ')
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -62,6 +68,10 @@ export default defineNuxtConfig({
           'Content-Security-Policy': CONTENT_SECURITY_POLICY,
           'X-Content-Type-Options': 'nosniff',
           'Referrer-Policy': 'strict-origin-when-cross-origin',
+          'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+          'Permissions-Policy': PERMISSIONS_POLICY,
+          'X-Frame-Options': 'DENY',
+          'Cross-Origin-Opener-Policy': 'same-origin',
         },
       },
     },

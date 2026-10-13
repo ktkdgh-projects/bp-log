@@ -25,16 +25,7 @@ export async function useHome() {
   ])
 
   // ← → 로 넘길 앞뒤 달을 미리 받아 둔다
-  if (import.meta.client) {
-    const nuxtApp = useNuxtApp()
-    watch(month, (m) => {
-      setTimeout(() => {
-        for (const next of [addMonths(m, -1), addMonths(m, 1)]) {
-          if (next <= thisMonth) prefetchData(nuxtApp, monthKey(next), () => $fetch<MonthResponse>('/api/records', { query: { month: next } }))
-        }
-      }, 200)
-    }, { immediate: true })
-  }
+  prefetchAroundMonth(month, thisMonth, monthKey, next => $fetch<MonthResponse>('/api/records', { query: { month: next } }))
 
   async function refresh() {
     await Promise.all([refreshMonth(), refreshSummary()])

@@ -44,3 +44,17 @@ export function clearUserData() {
 
 export const monthKey = (month: string) => `month:${month}`
 export const summaryKey = (month: string) => `summary:${month}`
+
+// ← → 로 넘길 앞뒤 달을 미리 받아 둔다. 키를 누르고 있어 달이 빨리 바뀌면 멈춘 달 것만 받는다
+export function prefetchAroundMonth<T>(month: Readonly<Ref<string>>, thisMonth: string, key: (month: string) => string, load: (month: string) => Promise<T>) {
+  if (import.meta.server) return
+  const nuxtApp = useNuxtApp()
+  watch(month, (m, _, onCleanup) => {
+    const timer = setTimeout(() => {
+      for (const next of [addMonths(m, -1), addMonths(m, 1)]) {
+        if (next <= thisMonth) prefetchData(nuxtApp, key(next), () => load(next))
+      }
+    }, 200)
+    onCleanup(() => clearTimeout(timer))
+  }, { immediate: true })
+}

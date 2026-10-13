@@ -19,6 +19,8 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  // 가입 때 막는 길이라 맞을 수 없다. 아주 긴 값으로 해시 계산을 오래 붙잡지 않게 바로 끊는다
+  if (password.length > MAX_PASSWORD_LENGTH) return false
   const [algo, n, r, p, saltB64, keyB64] = stored.split('$')
   if (algo !== 'scrypt' || !saltB64 || !keyB64) return false
   const expected = Buffer.from(keyB64, 'base64')

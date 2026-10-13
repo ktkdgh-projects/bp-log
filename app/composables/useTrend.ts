@@ -12,16 +12,7 @@ export async function useTrend() {
   })
 
   // ← → 로 넘길 앞뒤 달을 미리 받아 둔다
-  if (import.meta.client) {
-    const nuxtApp = useNuxtApp()
-    watch(month, (m) => {
-      setTimeout(() => {
-        for (const next of [addMonths(m, -1), addMonths(m, 1)]) {
-          if (next <= thisMonth) prefetchData(nuxtApp, summaryKey(next), () => $fetch<SummaryResponse>('/api/summary', { query: { month: next } }))
-        }
-      }, 200)
-    }, { immediate: true })
-  }
+  prefetchAroundMonth(month, thisMonth, summaryKey, next => $fetch<SummaryResponse>('/api/summary', { query: { month: next } }))
 
   const withGrade = (s: PeriodStat | null) => (s ? { ...s, grade: gradeOf(s.sys, s.dia) } : null)
   const monthStats = computed(() => {

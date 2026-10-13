@@ -1,5 +1,7 @@
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
+  await rateLimit(event, 'record', 60, 60)
+
   const body = await readBody<Record<string, unknown>>(event)
   if (!isDate(body?.date)) throw createError({ statusCode: 400, message: '날짜 형식을 확인해 주세요.' })
   const session = readSession(body?.session)
