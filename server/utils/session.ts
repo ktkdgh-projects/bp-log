@@ -32,6 +32,7 @@ declare module 'h3' {
   interface H3EventContext {
     user?: UserDoc
     session?: SessionDoc
+    isAdmin?: boolean
   }
 }
 
@@ -93,6 +94,7 @@ export async function loadSession(event: H3Event) {
   if (cached && cached.until > Date.now()) {
     event.context.session = cached.session
     event.context.user = cached.user
+    event.context.isAdmin = isAdminUser(cached.user)
     return
   }
 
@@ -145,6 +147,7 @@ export async function loadSession(event: H3Event) {
   cacheSession(tokenHash, session, user)
   event.context.session = session
   event.context.user = user
+  event.context.isAdmin = isAdminUser(user)
 }
 
 export function requireUser(event: H3Event): UserDoc {

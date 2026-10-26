@@ -62,8 +62,9 @@ const cells = useCalendarCells(() => props)
   touch-action: manipulation;
 }
 .cell:active:not(:disabled) { background: var(--soft); }
-.cell.selected { background: var(--soft-2); }
-.cell.today { background: #eef5f3; box-shadow: inset 0 0 0 2px var(--accent); }
+.cell.selected { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.cell.selected .num { color: var(--accent); font-weight: 700; }
+.cell.today:not(.selected) { background: #eef5f3; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .num { position: relative; font-size: 13px; line-height: 18px; font-weight: 500; }
 .cell.sun .num { color: #b4462a; }
 .cell.sat .num { color: #3e6fa3; }

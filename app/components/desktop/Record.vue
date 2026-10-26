@@ -10,7 +10,7 @@ const emit = defineEmits<{ close: [], saved: [date: string] }>()
 const typing = ref<Cursor | null>(null)
 const f = useRecordForm(typing, props.modal ? { date: props.date, session: props.session, onSaved: d => emit('saved', d) } : {})
 defineExpose({ dirty: f.dirty })
-const { today, minDate, date, session, rows, existing, failure, rest, restClock, stopRest, parsed, done, avg, grade, problem, gap, suggestThird, canSave, saveLabel } = f
+const { today, minDate, date, session, rows, existing, failure, restKind, restTotal, rest, stopRest, parsed, done, avg, grade, problem, gap, suggestThird, retakePair, retakeDeclined, canSave, saveLabel } = f
 
 const inputs = new Map<string, HTMLInputElement>()
 function bind(row: number, field: Field) {
@@ -19,8 +19,17 @@ function bind(row: number, field: Field) {
     else inputs.delete(`${row}:${field}`)
   }
 }
+// 쉬는 시간 모달이 떠 있는 동안은 입력칸으로 옮기지 않고, 닫히면 여기로 돌아온다
+const resume = ref<Cursor | null>(null)
+const restRow = computed(() => (resume.value ?? f.firstEmpty.value).row + 1)
+watch(restKind, (k) => {
+  if (!k) focus(resume.value ?? f.firstEmpty.value)
+})
+
 function focus(c: Cursor) {
+  resume.value = c
   nextTick(() => {
+    if (restKind.value) return
     const el = inputs.get(`${c.row}:${c.field}`)
     el?.focus()
     el?.select()
@@ -68,8 +77,13 @@ function onKeydown(row: number, field: Field, e: KeyboardEvent) {
 
 function addThird() {
   f.addThird()
-  focus({ row: 2, field: 'sys' })
 }
+// 3회차가 생기면(직접 추가했든 차이가 커서 자동이든) 그 칸으로 간다
+// 3회차를 안 재기로 해서 칸이 사라지면 2회차 맥박으로 돌아온다
+watch(() => rows.value.length, (n, old) => {
+  if (n > old) focus({ row: n - 1, field: 'sys' })
+  else if ((resume.value?.row ?? 0) >= n) focus({ row: n - 1, field: 'pulse' })
+})
 </script>
 
 <template>
@@ -122,7 +136,7 @@ function addThird() {
               :aria-invalid="!!parsed[ri]?.problem"
               @input="onInput(ri, fd, $event)"
               @keydown="onKeydown(ri, fd, $event)"
-              @focus="typing = { row: ri, field: fd }"
+              @focus="typing = resume = { row: ri, field: fd }"
               @blur="typing = null"
             >
             <button v-if="ri === 2" type="button" class="icon-btn row-x" aria-label="3회차 지우기" @click="f.removeRow(ri)"><AppIcon name="close" :size="16" /></button>
@@ -131,13 +145,7 @@ function addThird() {
         </div>
 
         <Transition name="fade" mode="out-in">
-          <div v-if="rest > 0" class="banner rest" role="status">
-            <AppIcon name="timer" :size="18" />
-            <span class="grow">1분 쉬고 다음 회차를 재요</span>
-            <b class="clock">{{ restClock }}</b>
-            <button type="button" class="skip" @click="stopRest">건너뛰기</button>
-          </div>
-          <div v-else-if="problem" class="banner bad" role="alert">
+          <div v-if="problem" class="banner bad" role="alert">
             <AppIcon name="alert" :size="18" />
             <span class="grow">{{ problem }}</span>
           </div>
@@ -150,7 +158,7 @@ function addThird() {
         <p v-if="failure" class="error" role="alert">{{ failure }}</p>
 
         <div class="actions">
-          <button v-if="rows.length < MAX_READINGS && !suggestThird" type="button" class="btn btn-ghost" @click="addThird">
+          <button v-if="rows.length < MAX_READINGS && !suggestThird && !retakeDeclined" type="button" class="btn btn-ghost" @click="addThird">
             <AppIcon name="plus" :size="16" /> 3회차 추가
           </button>
           <span class="grow" />
@@ -175,6 +183,8 @@ function addThird() {
         </section>
       </aside>
     </div>
+
+    <RestTimer v-if="restKind" :kind="restKind" :left="rest" :total="restTotal" :row="restRow" :compare="retakePair" @close="stopRest" @skip-retake="f.skipRetake" />
   </div>
 </template>
 
@@ -214,9 +224,6 @@ function addThird() {
 .row-x { width: 36px; height: 36px; color: var(--sub); }
 .banner { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 14px; border-radius: 14px; font-size: 14px; font-weight: 600; }
 .banner .grow { flex: 1; }
-.rest { background: var(--g-normal-bg); color: var(--g-normal-fg); }
-.clock { font-size: 16px; }
-.skip { height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: rgb(255 255 255 / 0.7); color: inherit; font-size: 13px; font-weight: 600; }
 .bad.banner { background: var(--danger-soft); color: var(--danger); }
 .third { background: var(--g-prehigh-bg); color: var(--g-prehigh-fg); }
 .third-btn { height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--g-prehigh-fg); color: #fff; font-size: 13px; font-weight: 700; }

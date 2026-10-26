@@ -3,8 +3,9 @@
 const { state, close, saved } = useRecordModal()
 const form = ref<{ dirty: boolean } | null>(null)
 
-function tryClose() {
-  if (form.value?.dirty && !confirm('입력한 값이 저장되지 않아요. 닫을까요?')) return
+const { ask } = useConfirm()
+async function tryClose() {
+  if (form.value?.dirty && !await ask({ title: '입력한 값을 버릴까요?', body: '저장하지 않고 닫으면 입력한 값이 사라져요.', confirmLabel: '닫기', cancelLabel: '계속 입력', danger: true })) return
   close()
 }
 

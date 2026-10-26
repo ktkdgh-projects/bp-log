@@ -23,7 +23,8 @@ const monthStats = computed(() => {
     const dia = Math.round(v.reduce((s, r) => s + r.avg.dia, 0) / v.length)
     return { text: `${sys}/${dia}`, grade: gradeOf(sys, dia) }
   }
-  return { count: recs.length, expected: elapsed * 2, morning: avg('morning'), evening: avg('evening') }
+  const expected = elapsed * 2
+  return { count: recs.length, expected, rate: expected ? Math.min(100, Math.round(recs.length / expected * 100)) : 0, morning: avg('morning'), evening: avg('evening') }
 })
 
 useMonthKeys(go, canNext)
@@ -45,15 +46,17 @@ watch(month, (m) => {
       </div>
 
       <dl class="stats" aria-label="이번 달 요약">
-        <div>
-          <dt>기록</dt>
+        <div class="stat-rate">
+          <dt><AppIcon name="calendar" :size="13" :stroke="2.2" /> {{ mon }}월 기록</dt>
           <dd>{{ monthStats.count }}<small>/{{ monthStats.expected }}회</small></dd>
+          <span class="rate"><span :style="{ width: `${monthStats.rate}%` }" /></span>
         </div>
-        <div v-for="s in (['morning', 'evening'] as const)" :key="s">
-          <dt><AppIcon :name="s === 'morning' ? 'sun' : 'moon'" :size="13" /> {{ SESSION_LABEL[s] }} 평균</dt>
+        <div v-for="s in (['morning', 'evening'] as const)" :key="s" :class="s" :style="monthStats[s] ? { '--g-bg': gradeVar(monthStats[s]!.grade, 'bg'), '--g-fg': gradeVar(monthStats[s]!.grade, 'fg') } : undefined">
+          <dt><AppIcon :name="s === 'morning' ? 'sun' : 'moon'" :size="13" :stroke="2.2" /> {{ SESSION_LABEL[s] }} 평균</dt>
           <dd>
             <template v-if="monthStats[s]">
-              <span class="dot" :style="{ background: gradeVar(monthStats[s]!.grade) }" />{{ monthStats[s]!.text }}
+              {{ monthStats[s]!.text }}
+              <GradeChip :grade="monthStats[s]!.grade" size="sm" />
             </template>
             <template v-else>–</template>
           </dd>
@@ -87,11 +90,15 @@ watch(month, (m) => {
 .nav .icon-btn:disabled { color: var(--line-strong); background: transparent; }
 .today-btn { height: 44px; padding: 0 16px; margin-left: 4px; font-size: 14px; border-radius: 12px; }
 .stats { display: flex; gap: 8px; margin: 0 0 0 auto; }
-.stats > div { display: flex; flex-direction: column; justify-content: center; min-width: 108px; height: 52px; padding: 0 14px; border-radius: 14px; background: var(--card); }
-.stats dt { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sub); }
-.stats dd { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 17px; font-weight: 700; }
+.stats > div { --g-bg: var(--card); --g-fg: var(--text); position: relative; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 132px; height: 60px; padding: 0 16px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(135deg, var(--g-bg) 0%, var(--card) 80%); }
+.stats dt { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: var(--sub); }
+.stats .morning dt :deep(svg) { color: #9a5b0b; }
+.stats .evening dt :deep(svg) { color: #2e6399; }
+.stats dd { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: var(--g-fg); font-variant-numeric: tabular-nums; }
 .stats small { font-size: 12px; font-weight: 500; color: var(--sub); }
-.dot { width: 8px; height: 8px; border-radius: 50%; }
+.rate { position: absolute; left: 16px; right: 16px; bottom: 8px; height: 4px; border-radius: 2px; background: var(--soft-2); overflow: hidden; }
+.rate span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.stat-rate { padding-bottom: 8px !important; }
 
 .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
 .cal-card { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 16px 18px 14px; }

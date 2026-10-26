@@ -6,7 +6,11 @@ export interface Cursor { row: number, field: Field }
 
 export const FIELDS: Field[] = ['sys', 'dia', 'pulse']
 export const FIELD_LABEL: Record<Field, string> = { sys: '수축기', dia: '이완기', pulse: '맥박' }
+// 재기 전 앉아 쉬는 시간, 회차 사이 쉬는 시간
+export const SETTLE_SECONDS = 5 * 60
 export const REST_SECONDS = 60
+// retake: 두 값 차이가 커서 3회차를 재기 전
+export type RestKind = 'settle' | 'between' | 'retake'
 
 // 혈압계 숫자 범위에 맞춰 몇 자리면 다 쓴 건지 정한다 (자릿수가 차면 다음 칸으로)
 export function digitsFor(field: Field, value: string) {
@@ -45,30 +49,43 @@ export function useRecordForm(typing: Ref<Cursor | null>, opts: RecordFormOption
   const busy = ref(false)
   const failure = ref('')
 
+  // restKind가 있으면 쉬는 시간 모달이 떠 있다. rest가 0이 되면 '이제 재요'로 바뀌고, 닫으면 restKind가 비워진다
+  const restKind = ref<RestKind | null>(null)
+  const restTotal = ref(0)
   const rest = ref(0)
   let restTimer: ReturnType<typeof setInterval> | undefined
-  function startRest() {
+  // 화면이 꺼지거나 다른 앱에 다녀와도 맞게, 1초씩 빼지 않고 끝나는 시각에서 남은 시간을 잰다
+  let restEndAt = 0
+  const chime = useChime()
+  function tickRest() {
+    rest.value = Math.max(0, Math.ceil((restEndAt - Date.now()) / 1000))
+    if (rest.value > 0) return
+    clearInterval(restTimer)
+    restTimer = undefined
+    navigator.vibrate?.([200, 100, 200])
+    chime.play()
+  }
+  function startRest(kind: RestKind = 'between') {
     stopRest()
-    rest.value = REST_SECONDS
-    restTimer = setInterval(() => {
-      rest.value -= 1
-      if (rest.value <= 0) {
-        stopRest()
-        navigator.vibrate?.(200)
-      }
-    }, 1000)
+    restKind.value = kind
+    restTotal.value = kind === 'settle' ? SETTLE_SECONDS : REST_SECONDS
+    restEndAt = Date.now() + restTotal.value * 1000
+    rest.value = restTotal.value
+    restTimer = setInterval(tickRest, 250)
   }
   function stopRest() {
     clearInterval(restTimer)
     restTimer = undefined
+    restKind.value = null
     rest.value = 0
   }
   onBeforeUnmount(stopRest)
-  const restClock = computed(() => `${Math.floor(rest.value / 60)}:${String(rest.value % 60).padStart(2, '0')}`)
 
   async function load() {
     failure.value = ''
     loaded.value = false
+    retakeOffered = false
+    retakeDeclined.value = false
     try {
       const day = await $fetch<DayResponse>('/api/records/day', { query: { date: date.value } })
       const rec = day[session.value]
@@ -86,7 +103,11 @@ export function useRecordForm(typing: Ref<Cursor | null>, opts: RecordFormOption
       loaded.value = true
     }
   }
-  onMounted(load)
+  // 오늘 새로 재는 기록이면 먼저 5분 앉아 쉬게 한다 (고치기·지난 날짜 몰아 넣기는 바로 입력)
+  onMounted(async () => {
+    await load()
+    if (!existing.value && !failure.value && date.value === today) startRest('settle')
+  })
   watch([date, session], () => {
     stopRest()
     load()
@@ -124,11 +145,39 @@ export function useRecordForm(typing: Ref<Cursor | null>, opts: RecordFormOption
     const [a, b] = parsed.value
     return a?.complete && b?.complete && !a.problem && !b.problem ? Math.abs(a.sys! - b.sys!) : 0
   })
-  const suggestThird = computed(() => rows.value.length === 2 && gap.value >= RETAKE_GAP)
+  // 3회차는 안 재기로 했으면 다시 권하지 않는다
+  const retakeDeclined = ref(false)
+  const suggestThird = computed(() => rows.value.length === 2 && gap.value >= RETAKE_GAP && !retakeDeclined.value)
+  // 3회차 안내에 나란히 보여 줄 1·2회차 수축기
+  const retakePair = computed<[number, number] | null>(() => {
+    const [a, b] = parsed.value
+    return a?.sys != null && b?.sys != null ? [a.sys, b.sys] : null
+  })
 
-  function addThird() {
+  function addThird(kind: RestKind = 'between') {
     rows.value.push(emptyRow())
-    startRest()
+    startRest(kind)
+  }
+
+  // 1·2회차 차이가 크면 3회차 쉬는 시간을 바로 띄운다. 2회차 맥박을 치는 중이면 다 칠 때까지 기다리고, 날짜·시간대마다 한 번만
+  let retakeOffered = false
+  function offerRetake() {
+    if (retakeOffered || !suggestThird.value || restKind.value || !dirty.value) return
+    retakeOffered = true
+    addThird('retake')
+  }
+  // 2회차 줄을 치는 중이면(이완기를 막 다 쳐서 아직 그 칸에 있어도) 맥박까지 다 칠 때까지 기다린다
+  // 맥박을 안 넣는 사람은 다른 칸으로 옮기거나 '다음'을 누르면 뜬다
+  watch(() => [suggestThird.value, typing.value?.row, typing.value?.field, rows.value[1]?.pulse] as const, () => {
+    const pulse = rows.value[1]?.pulse ?? ''
+    if (typing.value?.row === 1 && pulse.length < digitsFor('pulse', pulse)) return
+    offerRetake()
+  })
+  // 3회차는 안 재기로 하면 빈 칸을 지우고 쉬는 시간도 닫는다. 그 뒤로는 3회차 권유 안내도 숨긴다
+  function skipRetake() {
+    retakeDeclined.value = true
+    if (rows.value.length === 3 && !rows.value[2]!.sys) rows.value.splice(2, 1)
+    stopRest()
   }
   function removeRow(i: number) {
     rows.value.splice(i, 1)
@@ -173,8 +222,8 @@ export function useRecordForm(typing: Ref<Cursor | null>, opts: RecordFormOption
 
   return {
     today, minDate, date, session, rows, existing, loaded, busy, failure,
-    rest, restClock, startRest, stopRest,
-    firstEmpty, parsed, done, avg, grade, problem, gap, suggestThird, addThird, removeRow,
+    restKind, restTotal, rest, startRest, stopRest,
+    firstEmpty, parsed, done, avg, grade, problem, gap, suggestThird, retakePair, retakeDeclined, addThird, offerRetake, skipRetake, removeRow,
     dirty, canSave, saveLabel, save,
   }
 }

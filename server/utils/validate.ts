@@ -43,10 +43,10 @@ export function readDate(value: unknown): string {
   return value
 }
 
-// 혈압 기록 쓰기(저장·삭제)는 최근 3일만
-export function assertRecordEditable(date: string) {
+// 혈압 기록·메모 쓰기(저장·삭제)는 최근 3일만
+export function assertDateEditable(date: string) {
   if (!canEditRecord(date, kstToday())) {
-    throw createError({ statusCode: 403, message: `혈압 기록은 ${EDIT_DAYS}일 안에만 넣고 고칠 수 있어요.` })
+    throw createError({ statusCode: 403, message: `기록과 메모는 ${EDIT_DAYS}일 안에만 넣고 고칠 수 있어요.` })
   }
 }
 

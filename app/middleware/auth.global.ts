@@ -9,4 +9,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo({ path: '/login', query: to.fullPath !== '/' ? { next: to.fullPath } : undefined })
   }
   if (user && GUEST_ONLY.has(to.path)) return navigateTo('/')
+  // 운영 페이지는 운영자만 (서버 API도 따로 막는다)
+  if (to.path.startsWith('/admin') && !user?.isAdmin) return navigateTo('/')
 })

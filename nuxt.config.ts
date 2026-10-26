@@ -57,6 +57,8 @@ export default defineNuxtConfig({
   // 빈 값은 자리만 잡아둔 것. 실행 시 NUXT_MONGO_URI → mongoUri 식으로 환경 변수가 채운다
   runtimeConfig: {
     mongoUri: '',
+    // 운영 페이지를 볼 수 있는 아이디 (쉼표로 여러 개). NUXT_ADMIN_USERNAMES
+    adminUsernames: '',
     public: {},
   },
 

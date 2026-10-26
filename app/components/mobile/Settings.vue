@@ -24,6 +24,12 @@ watch(sheet, () => {
       </div>
     </section>
 
+    <NuxtLink v-if="a.me?.isAdmin" to="/admin" class="card admin-link">
+      <span class="admin-icon"><AppIcon name="trend" :size="18" :stroke="2.2" /></span>
+      <span class="admin-text"><b>운영</b><small>가입자·활동 추이</small></span>
+      <AppIcon name="chevron-right" :size="18" class="go" />
+    </NuxtLink>
+
     <section class="card list">
       <button type="button" class="item" @click="sheet = 'nickname'"><AppIcon name="user" :size="18" /> 닉네임 바꾸기 <AppIcon name="chevron-right" :size="16" class="go" /></button>
       <button type="button" class="item" @click="sheet = 'password'"><AppIcon name="lock" :size="18" /> 비밀번호 바꾸기 <AppIcon name="chevron-right" :size="16" class="go" /></button>
@@ -96,6 +102,12 @@ watch(sheet, () => {
 .item:last-child { border-bottom: 0; }
 .item :first-child { color: var(--sub); }
 .go { margin-left: auto; color: var(--mute); }
+/* 운영자에게만 보이는 운영 페이지 입구 */
+.admin-link { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--accent-soft); background: linear-gradient(135deg, var(--accent-soft) 0%, var(--card) 70%); color: var(--text); text-decoration: none; }
+.admin-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #fff; }
+.admin-text { display: flex; flex-direction: column; }
+.admin-text b { font-size: 15px; }
+.admin-text small { font-size: 12px; color: var(--sub); }
 .withdraw { align-self: center; min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--mute); font-size: 13px; }
 .form { display: flex; flex-direction: column; gap: 12px; }
 .msg { font-size: 13px; color: var(--accent); font-weight: 600; }

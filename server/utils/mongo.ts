@@ -93,6 +93,8 @@ async function ensureIndexes(db: Db) {
   const specs: [string, IndexDescription[]][] = [
     ['users', [
       { key: { username: 1 }, unique: true },
+      { key: { createdAt: 1 } },
+      { key: { lastSeenAt: 1 } },
     ]],
     ['sessions', [
       { key: { tokenHash: 1 }, unique: true },
@@ -102,6 +104,8 @@ async function ensureIndexes(db: Db) {
     ]],
     ['records', [
       { key: { userId: 1, date: 1, session: 1 }, unique: true },
+      // 운영 통계: 날짜별로 몇 명이 기록했는지
+      { key: { date: 1 } },
     ]],
     ['notes', [
       { key: { userId: 1, date: 1 }, unique: true },

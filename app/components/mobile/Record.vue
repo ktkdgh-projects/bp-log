@@ -4,7 +4,7 @@ import type { Cursor } from '~/composables/useRecordForm'
 // 휴대폰: 화면 키패드로 입력. 자릿수가 차면 다음 칸으로 넘어간다
 const active = ref<Cursor>({ row: 0, field: 'sys' })
 const f = useRecordForm(active)
-const { today, minDate, date, session, rows, existing, failure, rest, restClock, startRest, stopRest, parsed, done, avg, grade, problem, gap, suggestThird, canSave, saveLabel } = f
+const { today, minDate, date, session, rows, existing, failure, restKind, restTotal, rest, startRest, stopRest, parsed, done, avg, grade, problem, gap, suggestThird, retakePair, canSave, saveLabel } = f
 
 watch(f.loaded, (v) => {
   if (v) active.value = { ...f.firstEmpty.value }
@@ -21,6 +21,8 @@ function advance() {
     active.value = { row: row + 1, field: 'sys' }
     if (!rows.value[row + 1]!.sys) startRest()
   }
+  // 2회차 맥박을 건너뛰고 '다음'을 누르면, 두 값 차이가 클 때 3회차 쉬는 시간을 띄운다
+  else f.offerRetake()
 }
 
 function back() {
@@ -51,8 +53,13 @@ function press(key: string) {
 
 function addThird() {
   f.addThird()
-  active.value = { row: 2, field: 'sys' }
 }
+// 3회차가 생기면(직접 추가했든 차이가 커서 자동이든) 그 칸으로 간다
+// 3회차를 안 재기로 해서 칸이 사라지면 2회차 맥박으로 돌아온다
+watch(() => rows.value.length, (n, old) => {
+  if (n > old) active.value = { row: n - 1, field: 'sys' }
+  else if (active.value.row >= n) active.value = { row: n - 1, field: 'pulse' }
+})
 function removeRow(i: number) {
   f.removeRow(i)
   active.value = { row: Math.min(active.value.row, rows.value.length - 1), field: 'sys' }
@@ -113,13 +120,7 @@ function openDate() {
     </div>
 
     <Transition name="fade">
-      <div v-if="rest > 0" class="banner rest" role="status">
-        <AppIcon name="timer" :size="18" />
-        <span class="grow">1분 쉬고 {{ active.row + 1 }}회차를 재요</span>
-        <b class="clock">{{ restClock }}</b>
-        <button type="button" class="skip" @click="stopRest">건너뛰기</button>
-      </div>
-      <div v-else-if="problem" class="banner bad" role="alert">
+      <div v-if="problem" class="banner bad" role="alert">
         <AppIcon name="alert" :size="18" />
         <span class="grow">{{ problem }}</span>
       </div>
@@ -161,6 +162,8 @@ function openDate() {
       {{ saveLabel }}
     </button>
     <p class="tip">5분 앉아 쉰 뒤, 1분 간격으로 2번 재요.</p>
+
+    <RestTimer v-if="restKind" :kind="restKind" :left="rest" :total="restTotal" :row="active.row + 1" :compare="retakePair" @close="stopRest" @skip-retake="f.skipRetake" />
   </div>
 </template>
 
@@ -188,9 +191,6 @@ function openDate() {
 .row-x { position: absolute; top: -8px; right: -6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: var(--text-2); color: #fff; }
 .banner { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 14px; border-radius: 14px; font-size: 14px; font-weight: 600; }
 .banner .grow { flex: 1; }
-.rest { background: var(--g-normal-bg); color: var(--g-normal-fg); }
-.clock { font-size: 16px; }
-.skip { height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: rgb(255 255 255 / 0.7); color: inherit; font-size: 13px; font-weight: 600; }
 .bad.banner { background: var(--danger-soft); color: var(--danger); }
 .third { background: var(--g-prehigh-bg); color: var(--g-prehigh-fg); }
 .third-btn { height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--g-prehigh-fg); color: #fff; font-size: 13px; font-weight: 700; }

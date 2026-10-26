@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { thisMonth, month, year, mon, canNext, go, goToday, metric, summary, pending, monthStats, weekStats, recentRows } = await useTrend()
+const { thisMonth, month, year, mon, canNext, go, goToday, session, summary, pending, monthStats, weekCompare, recentRows } = await useTrend()
 useMonthKeys(go, canNext)
 const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.value.recorded / monthStats.value.expected * 100) : 0))
 </script>
@@ -20,18 +20,21 @@ const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.v
       <div class="main-col">
         <section class="card chart-card" aria-label="한 달 혈압 그래프" :aria-busy="pending">
           <div class="chart-head">
-            <h2 class="h2">{{ mon }}월 {{ metric === 'sys' ? '수축기' : '이완기' }}</h2>
+            <h2 class="h2">{{ mon }}월 {{ session === 'both' ? '아침·저녁' : SESSION_LABEL[session] }} 혈압</h2>
             <span class="keys">
-              <span><i class="line morning" />아침</span>
-              <span><i class="line evening" />저녁</span>
+              <template v-if="session === 'both'"><span><i class="line am" />아침</span><span><i class="line pm" />저녁</span><span class="sub-key">진하게 수축기 · 옅게 이완기</span></template>
+              <template v-else><span><i class="line sys" />수축기</span><span><i class="line dia" />이완기</span></template>
+            <span class="sub-key">▲최고 ▼최저</span>
               <span><i class="line ref" />고혈압 기준</span>
             </span>
-            <div class="seg" role="radiogroup" aria-label="보기">
-              <button type="button" role="radio" :aria-checked="metric === 'sys'" :class="{ on: metric === 'sys' }" @click="metric = 'sys'">수축기</button>
-              <button type="button" role="radio" :aria-checked="metric === 'dia'" :class="{ on: metric === 'dia' }" @click="metric = 'dia'">이완기</button>
+            <div class="seg" role="radiogroup" aria-label="시간대">
+              <button v-for="s in (['morning', 'evening'] as const)" :key="s" type="button" role="radio" :aria-checked="session === s" :class="{ on: session === s }" @click="session = s">
+                <AppIcon :name="s === 'morning' ? 'sun' : 'moon'" :size="14" :stroke="2.2" />{{ SESSION_LABEL[s] }}
+              </button>
+              <button type="button" role="radio" :aria-checked="session === 'both'" :class="{ on: session === 'both' }" @click="session = 'both'">겹쳐 보기</button>
             </div>
           </div>
-          <TrendChart v-if="summary" class="chart" :series="summary.series" :metric="metric" fill />
+          <TrendChart v-if="summary" class="chart" :series="summary.series" :session="session" fill />
           <div v-else class="chart chart-skel" />
         </section>
 
@@ -49,20 +52,17 @@ const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.v
 
       <aside class="card side" aria-label="최근 7일">
         <h2 class="side-title">최근 7일 <small>날짜와 상관없이 오늘 기준</small></h2>
-        <div v-if="summary" class="headline">
+        <div v-if="summary" class="headline" :style="{ '--tone-bg': INSIGHT_TONE[summary.headline.tone].bg, '--tone-fg': INSIGHT_TONE[summary.headline.tone].fg }">
           <InsightIcon :tone="summary.headline.tone" :size="36" />
           <div>
             <b class="hl-title">{{ summary.headline.title }}</b>
             <p class="hl-body">{{ summary.headline.body }}</p>
           </div>
         </div>
-        <div class="week-stats">
-          <SessionStat session="morning" label="아침 7일" :stat="weekStats.morning" compact />
-          <SessionStat session="evening" label="저녁 7일" :stat="weekStats.evening" compact />
-        </div>
+        <WeekCompare :items="weekCompare" aria-label="최근 7일 평균" />
         <RecentWeek :rows="recentRows" />
         <div class="insights">
-          <InsightList v-if="summary?.insights.length" :items="summary.insights" />
+          <InsightList v-if="summary?.insights.length" :items="summary.insights" compact />
         </div>
       </aside>
     </div>
@@ -82,20 +82,23 @@ const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.v
 .body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
 .main-col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 .chart-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px 22px 14px; }
-.chart-head { display: flex; align-items: center; gap: 20px; }
+.chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
 .chart-head .keys { margin-left: auto; }
 .chart { flex: 1; min-height: 0; }
-.h2 { font-size: 16px; font-weight: 700; }
+.h2 { font-size: 16px; font-weight: 700; white-space: nowrap; }
 .keys { display: flex; gap: 14px; font-size: 13px; color: var(--sub); }
-.keys span { display: inline-flex; align-items: center; gap: 6px; }
+.keys span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .line { display: inline-block; width: 16px; height: 3px; border-radius: 2px; }
-.line.morning { background: #1f5f55; }
-.line.evening { background: #7fa8d6; }
-.line.ref { background: repeating-linear-gradient(90deg, #d2602a 0 4px, transparent 4px 7px); }
+.line.sys { background: #2a8c7a; }
+.line.dia { background: #7c8fe0; }
+.line.am { background: linear-gradient(90deg, #1f8a72 50%, #62bfa9 50%); }
+.line.pm { background: linear-gradient(90deg, #6e56cf 50%, #a493ea 50%); }
+.sub-key { color: var(--mute); }
+.line.ref { background: repeating-linear-gradient(90deg, #e7a184 0 4px, transparent 4px 8px); }
 .chart-skel { border-radius: 12px; background: var(--soft); }
-.seg button { height: 32px; font-size: 13px; }
+.seg button { display: inline-flex; align-items: center; gap: 4px; height: 32px; font-size: 13px; white-space: nowrap; }
 .month-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 0.8fr); gap: 12px; }
-.count { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 16px; }
+.count { display: flex; flex-direction: column; gap: 6px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 18px; box-shadow: none; }
 .c-label { font-size: 13px; color: var(--sub); }
 .c-value { font-size: 24px; letter-spacing: -0.02em; }
 .c-value small { font-size: 13px; font-weight: 500; color: var(--sub); }
@@ -106,11 +109,8 @@ const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.v
 .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 18px; }
 .side-title { font-size: 17px; font-weight: 700; }
 .side-title small { margin-left: 6px; font-size: 12px; font-weight: 400; color: var(--mute); }
-.headline { display: flex; gap: 12px; align-items: flex-start; }
-.hl-title { font-size: 15px; }
+.headline { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: linear-gradient(135deg, var(--tone-bg) 0%, var(--soft) 80%); }
+.hl-title { font-size: 16px; color: var(--tone-fg); }
 .hl-body { font-size: 13px; line-height: 1.5; color: var(--text-2); }
-.week-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.week-stats :deep(.stat) { background: var(--soft); }
 .insights { flex: 1; min-height: 0; overflow-y: auto; }
-.insights :deep(.item) { background: var(--soft); padding: 10px 12px; }
 </style>

@@ -11,6 +11,9 @@ export default defineEventHandler(async (event) => {
   const username = readUsername(body.username)
   const password = readPassword(body.password)
   const nickname = readNickname(body.nickname)
+  if (adminUsernames().has(username)) {
+    throw createError({ statusCode: 409, message: '이미 쓰고 있는 아이디예요. 다른 아이디를 골라 주세요.' })
+  }
 
   const { users } = await useCollections()
   const now = new Date()

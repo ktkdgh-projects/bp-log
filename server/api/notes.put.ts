@@ -6,6 +6,7 @@ export default defineEventHandler(async (event): Promise<NoteDto> => {
 
   const body = await readBody<Record<string, unknown>>(event)
   const date = readDate(body?.date)
+  assertDateEditable(date)
   const tags = readTags(body?.tags)
   const memo = readMemo(body?.memo)
 

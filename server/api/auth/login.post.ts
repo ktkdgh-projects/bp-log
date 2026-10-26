@@ -30,5 +30,5 @@ export default defineEventHandler(async (event) => {
     createSession(event, user._id, body.remember !== false),
   ])
   // 화면이 /api/me를 다시 부르지 않게 사용자 정보를 같이 준다
-  return { ok: true, user: toMeUser(user) }
+  return { ok: true, user: toMeUser(user, isAdminUser(user)) }
 })

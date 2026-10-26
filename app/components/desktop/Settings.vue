@@ -71,6 +71,11 @@ const { openDoc } = useDocModal()
           <h2 class="h2"><AppIcon name="book" :size="18" /> 바르게 재는 법</h2>
           <MeasureGuide />
         </section>
+        <NuxtLink v-if="a.me?.isAdmin" to="/admin" class="card admin-link">
+          <span class="admin-icon"><AppIcon name="trend" :size="20" :stroke="2.2" /></span>
+          <span class="admin-text"><b>운영</b><small>가입자 수와 활동 추이를 봐요 (운영자만 보여요)</small></span>
+          <AppIcon name="chevron-right" :size="18" class="go" />
+        </NuxtLink>
         <section class="card links">
           <button type="button" class="link" @click="openDoc('terms')">이용약관 <AppIcon name="chevron-right" :size="16" /></button>
           <button type="button" class="link" @click="openDoc('privacy')">개인정보처리방침 <AppIcon name="chevron-right" :size="16" /></button>
@@ -103,5 +108,13 @@ const { openDoc } = useDocModal()
 .link:last-child { border-bottom: 0; }
 .link:hover { color: var(--accent); }
 .warn { font-size: 14px; color: var(--sub); }
+/* 운영자에게만 보이는 운영 페이지 입구 */
+.admin-link { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border: 1px solid var(--accent-soft); background: linear-gradient(135deg, var(--accent-soft) 0%, var(--card) 70%); color: var(--text); text-decoration: none; transition: border-color var(--fast) ease; }
+.admin-link:hover { border-color: var(--accent); }
+.admin-icon { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--accent); color: #fff; }
+.admin-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.admin-text b { font-size: 16px; }
+.admin-text small { font-size: 13px; color: var(--sub); }
+.admin-link .go { color: var(--mute); }
 .withdraw { align-self: flex-start; color: var(--danger); padding: 0 4px; }
 </style>

@@ -44,7 +44,7 @@ export const MIN_READINGS = 1
 // 두 번 잰 수축기 차이가 이만큼 나면 한 번 더 재기를 권한다
 export const RETAKE_GAP = 10
 
-// 혈압 기록은 오늘 포함 3일(오늘·어제·그제) 안에만 넣고 고치고 지울 수 있다
+// 혈압 기록과 메모·태그는 오늘 포함 3일(오늘·어제·그제) 안에만 넣고 고치고 지울 수 있다
 export const EDIT_DAYS = 3
 
 export function editableFrom(today: string): string {

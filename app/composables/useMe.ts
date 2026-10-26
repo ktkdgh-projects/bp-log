@@ -14,8 +14,9 @@ export function useMe() {
     if (me.value !== undefined) return me.value
     // 서버 렌더링 때는 서버 미들웨어가 이미 읽어 둔 사용자를 쓴다 (/api/me를 한 번 더 부르지 않게)
     if (import.meta.server) {
-      const user = useRequestEvent()?.context.user
-      me.value = user ? toMeUser(user) : null
+      const event = useRequestEvent()
+      const user = event?.context.user
+      me.value = user ? toMeUser(user, !!event?.context.isAdmin) : null
       return me.value
     }
     return await refresh()

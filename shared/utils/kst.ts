@@ -1,5 +1,5 @@
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
-const DAY_MS = 24 * 60 * 60 * 1000
+export const DAY_MS = 24 * 60 * 60 * 1000
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']

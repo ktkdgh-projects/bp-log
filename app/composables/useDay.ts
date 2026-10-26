@@ -12,6 +12,7 @@ export function useDay(date: Ref<string | null>, onChanged: () => void, month?: 
   const tags = ref<string[]>([])
   const memo = ref('')
   const savedMemo = ref('')
+  const confirm = useConfirm()
 
   function fromMonth(d: string): DayResponse | null {
     const m = month?.()
@@ -78,7 +79,9 @@ export function useDay(date: Ref<string | null>, onChanged: () => void, month?: 
   const dayAvg = computed(() => {
     const recs = sessions.value.map(s => s.rec).filter((r): r is RecordDto => !!r)
     if (recs.length < 2) return null
-    return `${Math.round(recs.reduce((s, r) => s + r.avg.sys, 0) / recs.length)}/${Math.round(recs.reduce((s, r) => s + r.avg.dia, 0) / recs.length)}`
+    const sys = Math.round(recs.reduce((s, r) => s + r.avg.sys, 0) / recs.length)
+    const dia = Math.round(recs.reduce((s, r) => s + r.avg.dia, 0) / recs.length)
+    return { text: `${sys}/${dia}`, grade: gradeOf(sys, dia) }
   })
 
   async function saveNote() {
@@ -106,7 +109,15 @@ export function useDay(date: Ref<string | null>, onChanged: () => void, month?: 
 
   async function remove(session: Session) {
     if (!date.value || !day.value) return
-    if (!confirm(`${SESSION_LABEL[session]} 기록을 지울까요?`)) return
+    const rec = day.value[session]
+    const ok = await confirm.ask({
+      title: `${SESSION_LABEL[session]} 기록을 지울까요?`,
+      body: `${formatDate(date.value)} 기록이에요. 지우면 되돌릴 수 없어요.`,
+      preview: rec ? { label: SESSION_LABEL[session], value: `${rec.avg.sys}/${rec.avg.dia}`, grade: gradeOf(rec.avg.sys, rec.avg.dia) } : undefined,
+      confirmLabel: '지우기',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await $fetch('/api/records', { method: 'DELETE', body: { date: date.value, session } })
       removed.value = [...removed.value, session]

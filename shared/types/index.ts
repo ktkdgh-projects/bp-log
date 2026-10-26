@@ -47,6 +47,26 @@ export interface MeUser {
   username: string
   nickname: string
   createdAt: string
+  isAdmin?: boolean
+}
+
+// 운영 페이지: 개인 기록 없이 합계만
+export interface AdminStatsResponse {
+  generatedAt: string
+  days: number
+  totals: {
+    users: number
+    newToday: number
+    new7: number
+    new30: number
+    active1: number
+    active7: number
+    active30: number
+    records: number
+    recordersToday: number
+  }
+  // 날마다: 그날 가입 수, 그날까지 누적 가입자, 그날 기록한 사람 수, 그날 기록 수
+  series: { date: string, signups: number, total: number, recorders: number, records: number }[]
 }
 
 export interface MeResponse {

@@ -3,4 +3,5 @@
     <NuxtPage />
   </NuxtLayout>
   <DocModal />
+  <ConfirmDialog />
 </template>
