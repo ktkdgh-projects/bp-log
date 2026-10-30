@@ -247,6 +247,8 @@ watch(() => tip.value && `${tip.value.month}${tip.value.day}|${tip.value.rows.ma
 
       <!-- 고혈압 기준선 (수축기 140 · 이완기 90) -->
       <line v-for="r in chart.refs" :key="r.metric" :x1="PAD.left" :x2="W - PAD.right" :y1="r.y" :y2="r.y" class="high-line" />
+      <!-- 기준선 이름표: 선 바로 위 오른쪽 끝에 글씨만. 배경처럼 깔고 그래프 선이 위로 지나간다 -->
+      <text v-for="r in chart.refs" :key="`p-${r.metric}`" :x="W - PAD.right - 4" :y="r.y - 5" text-anchor="end" class="high-text">{{ LABEL[r.metric] }} {{ r.v }}</text>
 
       <!-- 짚은 날 세로선 -->
       <line v-if="tip" :x1="tip.x" :x2="tip.x" :y1="PAD.top" :y2="chart.bottom" class="cursor" />
@@ -259,11 +261,6 @@ watch(() => tip.value && `${tip.value.month}${tip.value.day}|${tip.value.rows.ma
           <circle :cx="l.last.cx" :cy="l.last.cy" r="10" :fill="l.color" class="today-halo" />
           <circle :cx="l.last.cx" :cy="l.last.cy" r="4.5" :fill="l.color" stroke="#fff" stroke-width="2" />
         </template>
-      </g>
-
-      <!-- 기준선 이름표: 배경 없이 선 바로 위 오른쪽 끝에 글씨만 (그래프 선보다 위에 그린다) -->
-      <g v-for="r in chart.refs" :key="`p-${r.metric}`" :transform="`translate(${W - PAD.right - 4}, ${r.y})`">
-        <text x="0" y="-5" text-anchor="end" class="high-text">{{ LABEL[r.metric] }} {{ r.v }}</text>
       </g>
 
       <!-- 최고·최저: 점 + 둥근 이름표 -->
@@ -344,8 +341,8 @@ watch(() => tip.value && `${tip.value.month}${tip.value.day}|${tip.value.rows.ma
 .tick { font-size: 11px; fill: var(--mute); font-family: var(--font); font-variant-numeric: tabular-nums; }
 .tick.now { fill: var(--accent); font-weight: 700; }
 .high-line { stroke: #e7a184; stroke-width: 1.5; stroke-dasharray: 4 5; stroke-linecap: round; }
-/* 배경 없이 글씨만. 그래프 선이 지나가도 읽히게 글씨 둘레만 카드색으로 얇게 */
-.high-text { font-size: 10.5px; font-weight: 700; fill: #c0603a; font-family: var(--font); paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
+/* 배경 없이 글씨만 (그래프 선 아래에 깔린다) */
+.high-text { font-size: 10.5px; font-weight: 700; fill: #c0603a; font-family: var(--font); }
 .line { stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
 .wave { fill: none; stroke: rgb(23 32 29 / 0.1); stroke-width: 1.2; stroke-linejoin: round; }
 .tick.brk { font-size: 13px; font-weight: 700; }

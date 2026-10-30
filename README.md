@@ -40,11 +40,11 @@
 
 ```bash
 npm install
-cp .env.example .env   # NUXT_MONGO_URI 채우기
-npm run dev
+cp .env.example .env       # 운영 DB (NUXT_MONGO_URI 채우기)
+cp .env.example .env.dev   # 개발 DB: 같은 주소에서 DB 이름만 bp-log-dev로
+npm run dev                # 개발 DB(.env.dev)로 띄운다
+npm run dev:prod           # 운영 DB(.env)로 띄운다. 화면에서 고치면 실제 데이터가 바뀌니 조심
 ```
-
-로컬에서 운영 데이터를 건드리지 않으려면 DB 이름만 바꾼 `.env.dev`(…mongodb.net/bp-log-dev)를 만들고 `npx nuxt dev --dotenv .env.dev`로 띄운다.
 
 DB 연결 확인: `GET /api/health` → `{ "ok": true, "db": "bp-log" }`
 

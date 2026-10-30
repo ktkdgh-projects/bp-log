@@ -1,6 +1,6 @@
 // 쉬는 시간이 끝나면 울리는 "띠링띠링" 알림음. 소리 파일 없이 브라우저에서 바로 만든다 (Web Audio)
 // 브라우저는 사람이 화면을 한 번 누른 뒤에만 소리를 내 준다. 기록하기를 누를 때 열고 기록 화면을 나가면 닫는다
-// (소리를 열면 아이폰에서 듣던 음악이 멈춘다. 그래서 다른 화면에서는 소리를 아예 건드리지 않는다)
+// (소리 방식을 고를 수 없는 옛 아이폰은 소리를 열면 듣던 음악이 멈출 수 있어서, 다른 화면에서는 소리를 아예 건드리지 않는다)
 let ctx: AudioContext | null = null
 let closeTimer: ReturnType<typeof setTimeout> | undefined
 const STORAGE_KEY = 'bp-chime'
@@ -9,7 +9,7 @@ const STORAGE_KEY = 'bp-chime'
 const ready = ref(false)
 
 // 아이폰 사파리의 소리 방식 (지원하는 브라우저만)
-function setAudioSession(type: 'playback' | 'auto') {
+function setAudioSession(type: 'ambient' | 'auto') {
   const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
   if (session) session.type = type
 }
@@ -22,8 +22,8 @@ export function unlockChime() {
   }
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!AC) return
-  // 아이폰 무음 스위치가 켜져 있어도 알림음은 들리게
-  setAudioSession('playback')
+  // 듣던 음악을 멈추지 않고 그 위에 알림음을 섞어 낸다 (대신 아이폰 무음 모드에서는 알림음이 나지 않는다)
+  setAudioSession('ambient')
   ctx = new AC()
   const audio = ctx
   ready.value = audio.state === 'running'
