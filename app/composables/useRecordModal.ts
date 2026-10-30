@@ -8,6 +8,8 @@ export function useRecordModal() {
   const lastSaved = useState<string | null>('records-last-saved', () => null)
 
   function open(date?: string, session?: Session) {
+    // 누른 순간에 알림음을 열어 둔다 (기록 모달이 뜨자마자 쉬는 시간이 시작된다)
+    unlockChime()
     const slot = defaultSlot()
     state.value = { date: date ?? slot.date, session: session ?? slot.session }
   }

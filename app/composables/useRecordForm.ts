@@ -79,7 +79,11 @@ export function useRecordForm(typing: Ref<Cursor | null>, opts: RecordFormOption
     restKind.value = null
     rest.value = 0
   }
-  onBeforeUnmount(stopRest)
+  onBeforeUnmount(() => {
+    stopRest()
+    // 기록 화면을 나가면 소리를 닫아 듣던 음악이 다시 나올 수 있게
+    releaseChime()
+  })
 
   async function load() {
     failure.value = ''

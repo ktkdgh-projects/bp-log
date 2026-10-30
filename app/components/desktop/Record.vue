@@ -87,7 +87,7 @@ watch(() => rows.value.length, (n, old) => {
 </script>
 
 <template>
-  <div class="record" :class="{ modal }">
+  <div class="record" :class="{ modal }" data-chime>
     <header class="page-head">
       <div>
         <h1 :id="modal ? 'record-title' : undefined" class="title">{{ SESSION_LABEL[session] }} {{ existing ? '기록 고치기' : '기록하기' }}</h1>

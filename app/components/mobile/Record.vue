@@ -80,7 +80,7 @@ function openDate() {
 </script>
 
 <template>
-  <div class="record">
+  <div class="record" data-chime>
     <header class="head">
       <NuxtLink to="/" class="icon-btn" aria-label="달력으로 돌아가기"><AppIcon name="chevron-left" /></NuxtLink>
       <div class="head-text">

@@ -99,10 +99,11 @@ const tab = ref<'month' | 'week'>('month')
   white-space: nowrap;
 }
 .count b { color: var(--accent); font-size: 13px; }
-.chart-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 6px; border-radius: 16px; }
+/* 작은 휴대폰에서도 그래프가 너무 납작해지지 않게 (최고·최저 꼬리표 자리) 조금 넘치면 화면이 내려간다 */
+.chart-card { flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 6px; border-radius: 16px; }
 /* 위: 아침·저녁·겹쳐 보기 버튼 한 줄, 아래: 범례 한 줄 */
 .chart-head { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-.chart { flex: 1; min-height: 0; }
+.chart-card .chart { flex: 1; min-height: 290px; }
 .keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; font-size: 12px; color: var(--sub); }
 .keys span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .line { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }

@@ -80,38 +80,69 @@ const chart = computed(() => {
   }))
 
   // 기준선 이름표 (오른쪽 끝)
-  const refs = (['sys', 'dia'] as const).map(m => ({ metric: m, v: HIGH[m], y: y(HIGH[m]), w: 74 }))
+  const refs = (['sys', 'dia'] as const).map(m => ({ metric: m, v: HIGH[m], y: y(HIGH[m]) }))
 
   // 최고·최저 이름표: 선마다 최고와 최저를 둘 다 단다 (겹쳐 볼 때는 아침·저녁 각각)
-  // 최고는 점 위 → 아래 → 왼쪽 → 오른쪽, 최저는 점 아래 → 위 → 왼쪽 → 오른쪽 순서로 빈자리를 찾는다
-  const boxes = refs.map(r => ({ x: W.value - PAD.right - r.w - 4, y: r.y - 10, w: r.w + 4, h: 20 }))
-  const overlaps = (bx: { x: number, y: number, w: number, h: number }) =>
+  // 이름표가 그래프 선을 가리지 않게, 모든 선을 3px 간격 점으로 쪼개 두고 그 점을 덮지 않는 자리를 찾는다
+  const trail: { x: number, y: number }[] = []
+  for (const l of lines) {
+    l.pts.forEach((p, j) => {
+      const q = l.pts[j + 1]
+      if (!q) return trail.push({ x: p.cx, y: p.cy })
+      const steps = Math.max(1, Math.ceil(Math.max(Math.abs(q.cx - p.cx), Math.abs(q.cy - p.cy)) / 3))
+      for (let s = 0; s < steps; s++) trail.push({ x: p.cx + (q.cx - p.cx) * s / steps, y: p.cy + (q.cy - p.cy) * s / steps })
+    })
+  }
+  type Box = { x: number, y: number, w: number, h: number }
+  // 기준선 이름표는 선 바로 위 오른쪽 끝 글씨 (폭 74px쯤)
+  const boxes: Box[] = refs.map(r => ({ x: W.value - PAD.right - 74, y: r.y - 15, w: 74, h: 13 }))
+  const overlaps = (bx: Box) =>
     boxes.some(o => bx.x < o.x + o.w + 3 && o.x < bx.x + bx.w + 3 && bx.y < o.y + o.h + 2 && o.y < bx.y + bx.h + 2)
-  const marks: { key: string, kind: 'max' | 'min', color: string, cx: number, cy: number, bx: number, by: number, w: number, label: string, v: number }[] = []
+  const covered = (bx: Box) => {
+    let n = 0
+    for (const p of trail) if (p.x > bx.x - 2 && p.x < bx.x + bx.w + 2 && p.y > bx.y - 2 && p.y < bx.y + bx.h + 2) n++
+    return n
+  }
+  const marks: { key: string, kind: 'max' | 'min', color: string, cx: number, cy: number, bx: number, by: number, w: number, label: string, v: number, lead: { x: number, y: number } | null }[] = []
   const place = (l: (typeof lines)[number], kind: 'max' | 'min', q: Pt) => {
     // 꼬리표는 ▲(최고)·▼(최저) + 숫자만. 아침·저녁은 색으로 구분한다 (화면 읽기용 이름은 따로)
     const label = `${both.value ? `${SESSION_LABEL[q.session]} ` : ''}${kind === 'max' ? '최고' : '최저'}`
     const w = 26 + String(q.v).length * 7.5
-    const clampX = (v: number) => Math.min(Math.max(v, PAD.left), W.value - PAD.right - w)
-    const above = { x: clampX(q.cx - w / 2), y: q.cy - PILL_GAP - PILL_H }
-    const below = { x: clampX(q.cx - w / 2), y: q.cy + PILL_GAP }
-    const left = { x: q.cx - 10 - w, y: q.cy - PILL_H / 2 }
-    const right = { x: q.cx + 10, y: q.cy - PILL_H / 2 }
-    const order = kind === 'max' ? [above, below, left, right] : [below, above, left, right]
-    const spot = order.find(c => c.x >= PAD.left && c.x + w <= W.value - PAD.right && c.y >= PAD.top - 4 && c.y + PILL_H <= bottom + 2 && !overlaps({ ...c, w, h: PILL_H }))
+    // 최고는 점 위쪽, 최저는 점 아래쪽부터. 바로 위아래가 막히면 조금 더 멀리, 옆으로 비켜서, 그다음 반대쪽
+    const gaps = [0, 12, 24].map(d => PILL_GAP + d)
+    const up = gaps.map(d => q.cy - d - PILL_H)
+    const down = gaps.map(d => q.cy + d)
+    const ys = kind === 'max' ? [...up, ...down] : [...down, ...up]
+    const xs = [q.cx - w / 2, q.cx - w - 4, q.cx + 4]
+    // 가로는 그래프 안으로 당겨 두고, 세로로 그래프를 벗어나거나 다른 이름표와 겹치는 자리는 뺀다
+    const cands = ys.flatMap(y => xs.map(x => ({ x: Math.min(Math.max(x, PAD.left), W.value - PAD.right - w), y, w, h: PILL_H })))
+      .filter(c => c.y >= PAD.top - 4 && c.y + c.h <= bottom + 2 && !overlaps(c))
+    // 선을 덮는 만큼, 점에서 멀어지는 만큼 손해로 쳐서 가장 나은 자리 (선을 조금 덮는 것보다 멀리 가는 게 낫다)
+    let spot: Box | null = null
+    let best = Infinity
+    for (const c of cands) {
+      const cost = covered(c) * 12 + Math.abs(c.y + c.h / 2 - q.cy) + Math.abs(c.x + w / 2 - q.cx) / 2
+      if (cost < best) [spot, best] = [c, cost]
+    }
     if (!spot) return
-    boxes.push({ ...spot, w, h: PILL_H })
-    marks.push({ key: `${l.key}-${kind}`, kind, color: l.color, cx: q.cx, cy: q.cy, bx: spot.x, by: spot.y, w, label, v: q.v })
+    boxes.push(spot)
+    // 점에서 떨어져 놓이면 가는 선으로 잇는다
+    const lx = Math.min(Math.max(q.cx, spot.x + 9), spot.x + w - 9)
+    const ly = spot.y > q.cy ? spot.y : spot.y + PILL_H
+    const lead = Math.hypot(lx - q.cx, ly - q.cy) > PILL_GAP + 3 ? { x: lx, y: ly } : null
+    marks.push({ key: `${l.key}-${kind}`, kind, color: l.color, cx: q.cx, cy: q.cy, bx: spot.x, by: spot.y, w, label, v: q.v, lead })
   }
-  // 수축기부터, 최고를 먼저 놓아 자리 다툼에서 앞서게 한다
-  const ordered = [...lines].sort((a, b) => (a.metric === b.metric ? 0 : a.metric === 'sys' ? -1 : 1))
-  const ext = ordered.filter(l => l.pts.length).map((l) => {
+  // 위에서 아래 순서로 (수축기 최고 → 수축기 최저 → 이완기 최고 → 이완기 최저) 자리를 잡는다
+  const ext = lines.filter(l => l.pts.length).map((l) => {
     const max = l.pts.reduce((p, q) => (q.v >= p.v ? q : p))
     const min = l.pts.reduce((p, q) => (q.v <= p.v ? q : p))
     return { l, max, min: min.v === max.v ? null : min }
   })
-  for (const e of ext) place(e.l, 'max', e.max)
-  for (const e of ext) if (e.min) place(e.l, 'min', e.min)
+  for (const m of ['sys', 'dia'] as const) {
+    const own = ext.filter(e => e.l.metric === m)
+    for (const e of own) place(e.l, 'max', e.max)
+    for (const e of own) if (e.min) place(e.l, 'min', e.min)
+  }
 
   // 가로 눈금: 구간마다 따로 (10 간격이 너무 촘촘하면 20)
   const ticksIn = (from: number, to: number) => {
@@ -230,14 +261,14 @@ watch(() => tip.value && `${tip.value.month}${tip.value.day}|${tip.value.rows.ma
         </template>
       </g>
 
-      <!-- 기준선 이름표는 선 위에 (가려지지 않게) -->
+      <!-- 기준선 이름표: 배경 없이 선 바로 위 오른쪽 끝에 글씨만 (그래프 선보다 위에 그린다) -->
       <g v-for="r in chart.refs" :key="`p-${r.metric}`" :transform="`translate(${W - PAD.right - 4}, ${r.y})`">
-        <rect :x="-r.w" y="-10" :width="r.w" height="20" rx="10" class="high-pill" />
-        <text :x="-r.w / 2" y="4" text-anchor="middle" class="high-text">{{ LABEL[r.metric] }} {{ r.v }}</text>
+        <text x="0" y="-5" text-anchor="end" class="high-text">{{ LABEL[r.metric] }} {{ r.v }}</text>
       </g>
 
       <!-- 최고·최저: 점 + 둥근 이름표 -->
       <g v-for="mk in chart.marks" :key="mk.key" class="mark" :class="{ dim: tip }">
+        <line v-if="mk.lead" :x1="mk.cx" :y1="mk.cy" :x2="mk.lead.x" :y2="mk.lead.y" :stroke="mk.color" class="lead" />
         <circle :cx="mk.cx" :cy="mk.cy" r="4" fill="#fff" :stroke="mk.color" stroke-width="2.5" />
         <rect :x="mk.bx" :y="mk.by" :width="mk.w" :height="PILL_H" rx="9" class="tag" :fill="mk.color" />
         <text :x="mk.bx + mk.w / 2" :y="mk.by + 13" text-anchor="middle" class="tag-text"><tspan class="tag-arrow">{{ mk.kind === 'max' ? '▲' : '▼' }}</tspan> {{ mk.v }}</text>
@@ -313,8 +344,8 @@ watch(() => tip.value && `${tip.value.month}${tip.value.day}|${tip.value.rows.ma
 .tick { font-size: 11px; fill: var(--mute); font-family: var(--font); font-variant-numeric: tabular-nums; }
 .tick.now { fill: var(--accent); font-weight: 700; }
 .high-line { stroke: #e7a184; stroke-width: 1.5; stroke-dasharray: 4 5; stroke-linecap: round; }
-.high-pill { fill: rgb(255 255 255 / 0.85); }
-.high-text { font-size: 10.5px; font-weight: 700; fill: #c0603a; font-family: var(--font); }
+/* 배경 없이 글씨만. 그래프 선이 지나가도 읽히게 글씨 둘레만 카드색으로 얇게 */
+.high-text { font-size: 10.5px; font-weight: 700; fill: #c0603a; font-family: var(--font); paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
 .line { stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
 .wave { fill: none; stroke: rgb(23 32 29 / 0.1); stroke-width: 1.2; stroke-linejoin: round; }
 .tick.brk { font-size: 13px; font-weight: 700; }
@@ -325,6 +356,7 @@ watch(() => tip.value && `${tip.value.month}${tip.value.day}|${tip.value.rows.ma
 @keyframes pop { from { transform: scale(0.4); } }
 .mark { transition: opacity var(--fast) ease; }
 .mark.dim { opacity: 0.25; }
+.lead { stroke-width: 1.5; stroke-dasharray: 2 2; }
 /* 최고·최저 꼬리표: 선 색으로 꽉 찬 작은 알약 */
 .tag { filter: drop-shadow(0 2px 3px rgb(23 32 29 / 0.18)); }
 .tag-text { font-size: 11.5px; font-weight: 700; fill: #fff; font-family: var(--font); font-variant-numeric: tabular-nums; }

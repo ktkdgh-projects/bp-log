@@ -1,9 +1,8 @@
-// 화면을 처음 누를 때 알림음을 낼 수 있게 열어 둔다 (브라우저는 사람이 누르기 전엔 소리를 막는다)
+// 알림음은 기록 화면에서만 쓴다. 기록 화면으로 가는 링크나 기록 화면 안([data-chime])을 누를 때만 소리를 열어 둔다
+// (다른 화면에서 소리를 열면 아이폰에서 듣던 음악이 멈춘다. PC 기록 모달은 useRecordModal().open()에서 연다)
 export default defineNuxtPlugin(() => {
-  // 아이폰 무음 스위치가 켜져 있어도 알림음은 들리게 (지원하는 사파리만)
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
-  if (session) session.type = 'playback'
-
-  const unlock = () => unlockChime()
+  const unlock = (e: Event) => {
+    if ((e.target as Element | null)?.closest?.('[data-chime], a[href^="/record"]')) unlockChime()
+  }
   for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, unlock, { capture: true, passive: true })
 })

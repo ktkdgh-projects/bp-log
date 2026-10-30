@@ -61,7 +61,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
 
 <template>
   <Teleport to="body">
-    <div ref="dialog" class="rest" :class="[kind, { done }]" role="dialog" aria-modal="true" aria-labelledby="rest-title" tabindex="-1">
+    <div ref="dialog" class="rest" :class="[kind, { done }]" data-chime role="dialog" aria-modal="true" aria-labelledby="rest-title" tabindex="-1">
       <button type="button" class="sound" :aria-pressed="chime.enabled.value" :aria-label="chime.enabled.value ? '알림음 끄기' : '알림음 켜기'" @click="chime.toggle()">
         <AppIcon :name="chime.enabled.value ? 'bell' : 'bell-off'" :size="18" :stroke="2.2" />
         {{ chime.enabled.value ? '소리 켬' : '소리 끔' }}

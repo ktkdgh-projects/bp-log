@@ -1,18 +1,29 @@
 // 쉬는 시간이 끝나면 울리는 "띠링띠링" 알림음. 소리 파일 없이 브라우저에서 바로 만든다 (Web Audio)
-// 브라우저는 사람이 화면을 한 번 누른 뒤에만 소리를 내 준다. plugins/chime.client.ts가 첫 터치 때 열어 둔다
+// 브라우저는 사람이 화면을 한 번 누른 뒤에만 소리를 내 준다. 기록하기를 누를 때 열고 기록 화면을 나가면 닫는다
+// (소리를 열면 아이폰에서 듣던 음악이 멈춘다. 그래서 다른 화면에서는 소리를 아예 건드리지 않는다)
 let ctx: AudioContext | null = null
+let closeTimer: ReturnType<typeof setTimeout> | undefined
 const STORAGE_KEY = 'bp-chime'
 // 소리를 낼 수 있는 상태인지. 새로고침 직후처럼 아직 아무것도 안 누른 화면에서는 브라우저가 막아 둔다
 // (브라우저에서만 바뀐다. 쉬는 시간 모달이 보고 '한 번 눌러 주세요' 안내를 띄운다)
 const ready = ref(false)
 
+// 아이폰 사파리의 소리 방식 (지원하는 브라우저만)
+function setAudioSession(type: 'playback' | 'auto') {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+  if (session) session.type = type
+}
+
 export function unlockChime() {
+  clearTimeout(closeTimer)
   if (ctx) {
     if (ctx.state === 'suspended') ctx.resume().catch(() => {})
     return
   }
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!AC) return
+  // 아이폰 무음 스위치가 켜져 있어도 알림음은 들리게
+  setAudioSession('playback')
   ctx = new AC()
   const audio = ctx
   ready.value = audio.state === 'running'
@@ -23,6 +34,18 @@ export function unlockChime() {
   src.buffer = buffer
   src.connect(ctx.destination)
   src.start(0)
+}
+
+// 기록 화면을 나가면 소리를 닫아 다른 앱이 다시 소리를 쓸 수 있게 한다 (막 울린 알림음은 끝까지 들리게 조금 뒤에)
+export function releaseChime() {
+  clearTimeout(closeTimer)
+  closeTimer = setTimeout(() => {
+    const audio = ctx
+    ctx = null
+    ready.value = false
+    audio?.close().catch(() => {})
+    setAudioSession('auto')
+  }, 2000)
 }
 
 // 맑은 종소리 한 음: 기본음에 한 옥타브 위 소리를 살짝 섞고 빠르게 울렸다가 길게 사라진다
