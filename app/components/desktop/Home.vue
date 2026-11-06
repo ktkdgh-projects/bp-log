@@ -103,8 +103,14 @@ watch(month, (m) => {
 .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
 .cal-card { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 16px 18px 14px; }
 .cal { flex: 1; min-height: 0; }
-.foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.order { font-size: 13px; color: var(--sub); }
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.order { font-size: 13px; color: var(--sub); white-space: nowrap; }
 .legend { font-size: 13px; }
 .panel { min-height: 0; overflow-y: auto; padding: 18px; }
+
+/* 좁은 PC 화면: 상세 패널을 줄여 달력 칸을 넓힌다 */
+@media (max-width: 1279px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 320px; }
+  .cal-card { padding: 14px 12px 12px; }
+}
 </style>

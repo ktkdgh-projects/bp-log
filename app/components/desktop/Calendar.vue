@@ -75,6 +75,8 @@ const cells = useCalendarCells(() => props)
   color: var(--text);
   text-align: left;
   transition: background var(--fast) ease, border-color var(--fast) ease;
+  /* 칸 폭에 맞춰 안쪽 글씨 크기를 바꾼다 (아래 @container) */
+  container: cell / inline-size;
 }
 .cell:hover:not(:disabled) { background: var(--soft-2); }
 .cell.selected { border-color: var(--accent); background: var(--accent-soft); }
@@ -92,7 +94,16 @@ const cells = useCalendarCells(() => props)
 .dot { flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; }
 
 @media (max-width: 1280px) {
-  .cell { padding: 8px 10px; }
-  .slot { font-size: 14px; }
+  .cell { padding: 8px 7px; }
+}
+@container cell (max-width: 72px) {
+  .slot { gap: 4px; font-size: 13px; }
+  .dot { width: 7px; height: 7px; }
+}
+/* 아주 좁은 칸: 글씨를 더 줄이고, 오늘 표시는 테두리로만 */
+@container cell (max-width: 58px) {
+  .slot { gap: 3px; font-size: 12px; letter-spacing: -0.02em; }
+  .dot { width: 6px; height: 6px; }
+  .today-tag { display: none; }
 }
 </style>

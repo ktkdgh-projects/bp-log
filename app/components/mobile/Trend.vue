@@ -22,7 +22,7 @@ const tab = ref<'month' | 'week'>('month')
         <span class="grow" />
         <button v-if="month !== thisMonth" type="button" class="btn this-month" @click="goToday">이번 달</button>
         <span class="count" :style="{ '--r': monthStats.expected ? monthStats.recorded / monthStats.expected : 0 }">
-          기록 <b>{{ monthStats.recorded }}</b>/{{ monthStats.expected }}
+          <span class="count-label">기록</span> <b>{{ monthStats.recorded }}</b>/{{ monthStats.expected }}
         </span>
       </div>
 
@@ -79,26 +79,36 @@ const tab = ref<'month' | 'week'>('month')
 .month-nav { display: flex; align-items: center; gap: 4px; }
 .month-nav .icon-btn { width: 38px; height: 38px; }
 .month-nav .icon-btn:disabled { color: var(--line-strong); }
-.month { min-width: 100px; font-size: 16px; text-align: center; }
+.month { min-width: 100px; font-size: 16px; text-align: center; white-space: nowrap; }
 .grow { flex: 1; }
-.this-month { height: 34px; padding: 0 10px; font-size: 13px; border-radius: 10px; background: var(--card); color: var(--text); }
+.this-month { flex-shrink: 0; height: 34px; padding: 0 10px; font-size: 13px; border-radius: 10px; background: var(--card); color: var(--text); white-space: nowrap; }
 /* 기록 몇 번 했는지: 글자 아래 가는 막대가 기록한 만큼 찬다 */
 .count {
+  --pad: 12px;
   display: inline-flex;
   align-items: center;
   gap: 2px;
   height: 34px;
-  padding: 0 12px 4px;
+  padding: 0 var(--pad) 4px;
   border-radius: 12px;
   background:
-    linear-gradient(var(--accent), var(--accent)) left 12px bottom 6px / calc((100% - 24px) * var(--r)) 3px no-repeat,
-    linear-gradient(var(--soft-2), var(--soft-2)) left 12px bottom 6px / calc(100% - 24px) 3px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left var(--pad) bottom 6px / calc((100% - 2 * var(--pad)) * var(--r)) 3px no-repeat,
+    linear-gradient(var(--soft-2), var(--soft-2)) left var(--pad) bottom 6px / calc(100% - 2 * var(--pad)) 3px no-repeat,
     var(--card);
   font-size: 12px;
   color: var(--sub);
   white-space: nowrap;
 }
 .count b { color: var(--accent); font-size: 13px; }
+/* 아주 좁은 휴대폰(SE 1세대 등): 달 이동 줄을 촘촘하게 */
+@media (max-width: 360px) {
+  .month-nav { gap: 2px; }
+  .month-nav .icon-btn { width: 32px; height: 34px; }
+  .month { min-width: 0; font-size: 15px; }
+  .count-label { display: none; }
+  .this-month { padding: 0 8px; }
+  .count { --pad: 8px; }
+}
 /* 작은 휴대폰에서도 그래프가 너무 납작해지지 않게 (최고·최저 꼬리표 자리) 조금 넘치면 화면이 내려간다 */
 .chart-card { flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 6px; border-radius: 16px; }
 /* 위: 아침·저녁·겹쳐 보기 버튼 한 줄, 아래: 범례 한 줄 */

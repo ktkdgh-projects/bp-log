@@ -118,4 +118,9 @@ const chartH = computed(() => (isMobile.value ? 200 : 300))
   .charts { grid-template-columns: minmax(0, 1fr); }
   .k-value { font-size: 26px; }
 }
+/* 아주 좁은 휴대폰: 칸 안 글씨가 잘리지 않고 줄을 바꾼다 */
+@media (max-width: 360px) {
+  .kpi { padding: 12px; }
+  .k-sub { white-space: normal; }
+}
 </style>

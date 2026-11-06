@@ -16,18 +16,18 @@ const NAV = [
     <aside class="side">
       <NuxtLink to="/" class="logo" aria-label="bp-log 홈">
         <img src="/favicon.svg" alt="" width="32" height="32">
-        <span>bp-log</span>
+        <span class="label">bp-log</span>
       </NuxtLink>
 
-      <button type="button" class="btn btn-primary btn-block record-btn" @click="open(slot.date, slot.session)">
+      <button type="button" class="btn btn-primary btn-block record-btn" :title="`${SESSION_LABEL[slot.session]} 기록하기`" @click="open(slot.date, slot.session)">
         <AppIcon :name="slot.session === 'morning' ? 'sun' : 'moon'" :size="18" :stroke="2.2" />
-        {{ SESSION_LABEL[slot.session] }} 기록하기
+        <span class="label">{{ SESSION_LABEL[slot.session] }} 기록하기</span>
       </button>
 
       <nav class="nav" aria-label="메뉴">
-        <NuxtLink v-for="n in NAV" :key="n.to" :to="n.to" class="nav-link" :class="{ active: route.path === n.to }" :aria-current="route.path === n.to ? 'page' : undefined">
+        <NuxtLink v-for="n in NAV" :key="n.to" :to="n.to" class="nav-link" :class="{ active: route.path === n.to }" :aria-current="route.path === n.to ? 'page' : undefined" :title="n.label">
           <AppIcon :name="n.icon" :size="20" />
-          {{ n.label }}
+          <span class="label">{{ n.label }}</span>
         </NuxtLink>
       </nav>
 
@@ -124,4 +124,16 @@ const NAV = [
   padding: 24px 32px;
 }
 .main-in > :deep(*) { flex: 1; min-height: 0; }
+
+/* 노트북처럼 좁은 PC 화면: 왼쪽 메뉴를 아이콘만 남겨 본문 자리를 넓힌다 (더 좁으면 모바일 화면으로 바뀐다) */
+@media (max-width: 1279px) {
+  .shell { grid-template-columns: 76px minmax(0, 1fr); }
+  .side { align-items: center; padding: 20px 12px 14px; }
+  .label, .who { display: none; }
+  .logo { padding: 0; }
+  .record-btn { width: 48px; padding: 0; }
+  .nav-link { justify-content: center; width: 48px; padding: 0; }
+  .me { flex-direction: column; gap: 6px; padding: 12px 0 0; }
+  .main-in { padding: 20px 24px; }
+}
 </style>
