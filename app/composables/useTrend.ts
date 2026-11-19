@@ -1,8 +1,8 @@
 import type { SummaryResponse, Session } from '#shared/types'
 
-// 추이: 달별 그래프·통계(?month) + 오늘 기준 최근 7일 정리
+// 추이: 달별 그래프·통계(?month) + 어제까지 최근 7일 정리
 export async function useTrend() {
-  const { today, thisMonth, month, year, mon, canNext, go, goToday } = useMonthQuery()
+  const { thisMonth, month, year, mon, canNext, go, goToday } = useMonthQuery()
   // 그래프는 아침·저녁 중 하나를 골라 수축기·이완기 두 선으로 본다 (아침·저녁 선은 서로 엉켜서)
   // 'both'는 아침(초록 계열)·저녁(보라 계열)을 겹쳐 본다
   const session = ref<Session | 'both'>('morning')
@@ -28,10 +28,9 @@ export async function useTrend() {
     return { session, now, delta: now && before ? now.sys - before.sys : null }
   }))
 
-  // 최근 7일: 왼쪽이 오래된 날, 오른쪽 끝이 오늘
+  // 최근 7일: 왼쪽이 오래된 날, 오른쪽 끝이 어제
   const recentRows = computed(() => (summary.value?.recent ?? []).map(p => ({
     date: p.date,
-    isToday: p.date === today,
     morning: withGrade(p.morning),
     evening: withGrade(p.evening),
   })))

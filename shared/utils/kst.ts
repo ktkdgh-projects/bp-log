@@ -40,6 +40,11 @@ export function daysInMonth(month: string): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate()
 }
 
+// 그 달 마지막 날 (YYYY-MM-DD)
+export function monthEnd(month: string): string {
+  return `${month}-${String(daysInMonth(month)).padStart(2, '0')}`
+}
+
 // 0 = 일요일
 export function weekday(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay()

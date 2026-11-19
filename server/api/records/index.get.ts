@@ -6,7 +6,7 @@ export default defineEventHandler(async (event): Promise<MonthResponse> => {
   if (!isMonth(month)) throw createError({ statusCode: 400, message: '월 형식을 확인해 주세요.' })
 
   const from = `${month}-01`
-  const to = `${month}-${String(daysInMonth(month)).padStart(2, '0')}`
+  const to = monthEnd(month)
   const { records, notes } = await useCollections()
   const [recordDocs, noteDocs] = await Promise.all([
     records.find({ userId: user._id, date: { $gte: from, $lte: to } }).sort({ date: 1 }).toArray(),

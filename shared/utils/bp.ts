@@ -28,6 +28,13 @@ export const GRADE_RANGE: Record<Grade, string> = {
   stage2: '160 또는 100 이상',
 }
 
+// 목표 혈압 (대한고혈압학회 진료지침의 일반 목표). 화면에는 '130/80 미만'으로 적는다
+export const TARGET = { sys: 130, dia: 80 } as const
+
+export function inTarget(sys: number, dia: number): boolean {
+  return sys < TARGET.sys && dia < TARGET.dia
+}
+
 export const SESSION_LABEL: Record<Session, string> = {
   morning: '아침',
   evening: '저녁',

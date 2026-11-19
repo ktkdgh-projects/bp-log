@@ -34,6 +34,8 @@ type Pt = { i: number, cx: number, cy: number, v: number, session: Session }
 
 // 수축기 구간(위)과 이완기 구간(아래) 사이의 빈 값 구간은 이만큼(px)으로 접는다
 const BREAK_PX = 18
+// 접힌 자리(≈) 표시와 눈금 글자가 겹치지 않게 비워 두는 거리
+const BREAK_LABEL_GAP = 14
 // 각 구간 위아래 여유 (mmHg)
 const REGION_PAD = 4
 
@@ -151,7 +153,8 @@ const chart = computed(() => {
     for (let v = Math.ceil(from / step) * step; v <= to; v += step) out.push({ v, y: y(v) })
     return out
   }
-  const ticks = broken ? [...ticksIn(b, hiU), ...ticksIn(loL, a)] : ticksIn(loL, hiU)
+  // 접힌 자리(≈) 바로 옆 눈금은 글자가 겹쳐서 뺀다
+  const ticks = broken ? [...ticksIn(b, hiU), ...ticksIn(loL, a)].filter(t => Math.abs(t.y - (breakTop + BREAK_PX / 2)) >= BREAK_LABEL_GAP) : ticksIn(loL, hiU)
 
   // 접힌 자리 표시: 세로축의 ≈ 와 아주 옅은 물결선
   let wave = ''

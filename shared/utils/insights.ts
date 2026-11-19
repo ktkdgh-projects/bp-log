@@ -1,6 +1,7 @@
-import type { Average, Insight, PeriodStat, SeriesPoint, Session, SessionStats, SummaryResponse } from '../types'
-import { gradeOf } from './bp'
-import { addDays, dateRange, daysInMonth } from './kst'
+import type { Average, Insight, PeriodStat, SeriesPoint, Session, SessionStats, SummaryResponse, WeekStats } from '../types'
+import { gradeOf, inTarget } from './bp'
+import { addDays, dateRange, monthEnd } from './kst'
+import { buildReport } from './report'
 
 export interface SummaryInput {
   today: string
@@ -64,10 +65,12 @@ export function buildSummary({ today, month, records, notes }: SummaryInput): Su
     })
   const statsOf = (from: string, to: string): SessionStats => ({ morning: statOf(pick(from, to, 'morning')), evening: statOf(pick(from, to, 'evening')) })
 
-  const weekFrom = addDays(today, -6)
-  const lastFrom = addDays(today, -13)
-  const lastTo = addDays(today, -7)
-  const week = statsOf(weekFrom, today)
+  // 최근 7일은 어제까지 (오늘은 아직 저녁을 안 재서 비교가 흔들린다)
+  const weekTo = addDays(today, -1)
+  const weekFrom = addDays(today, -7)
+  const lastFrom = addDays(today, -14)
+  const lastTo = addDays(today, -8)
+  const week = statsOf(weekFrom, weekTo)
   const lastWeek = statsOf(lastFrom, lastTo)
 
   const headline = buildHeadline(week, lastWeek)
@@ -120,26 +123,17 @@ export function buildSummary({ today, month, records, notes }: SummaryInput): Su
   tagInsight('짜게 먹음', false)
   tagInsight('잠 부족', false)
 
-  // 기록 습관 (최근 7일)
-  const recentDays = dateRange(weekFrom, today)
-  const recorded = recentDays.reduce((n, d) => n + (byDate.get(d)?.morning ? 1 : 0) + (byDate.get(d)?.evening ? 1 : 0), 0)
-  const expected = recentDays.length * 2
-  if (recorded > 0) {
-    const missing = expected - recorded
-    insights.push({
-      tone: 'info',
-      title: `${recentDays.length}일 동안 ${recorded}번 기록했어요`,
-      body: missing === 0 ? '하루도 빠짐없이 기록 중이에요.' : missing <= 2 ? `빠진 건 ${missing}번뿐이에요.` : '아침·저녁 한 번씩, 꾸준히 쌓을수록 동향이 정확해져요.',
-    })
-  }
+  // 몇 번 쟀는지는 최근 7일 한눈에(weekStats)가 보여 준다
+  const recentDays = dateRange(weekFrom, weekTo)
 
   const pointOf = (d: string): SeriesPoint => byDate.get(d) ?? { date: d, morning: null, evening: null }
   const recent = recentDays.map(pointOf)
+  const weekStats = weekStatsOf(recent, byDate, weekTo)
 
   // 고른 달: 이번 달이면 오늘까지만
   const monthFrom = `${month}-01`
-  const monthEnd = `${month}-${String(daysInMonth(month)).padStart(2, '0')}`
-  const monthTo = monthEnd < today ? monthEnd : today
+  const monthLast = monthEnd(month)
+  const monthTo = monthLast < today ? monthLast : today
   const series = dateRange(monthFrom, monthTo).map(pointOf)
   const monthStats = {
     ...statsOf(monthFrom, monthTo),
@@ -147,12 +141,33 @@ export function buildSummary({ today, month, records, notes }: SummaryInput): Su
     expected: series.length * 2,
   }
 
-  return { today, headline, insights, week, lastWeek, recent, month, series, monthStats }
+  const tagsByDate = new Map(notes.map(n => [n.date, n.tags]))
+  const report = buildReport({ today, month, byDate, tagsByDate })
+
+  return { today, headline, insights, week, lastWeek, weekStats, recent, month, series, monthStats, report }
+}
+
+function weekStatsOf(recent: SeriesPoint[], byDate: Map<string, SeriesPoint>, to: string): WeekStats {
+  const readings = recent.flatMap(p => (['morning', 'evening'] as const).flatMap(session => (p[session] ? [{ date: p.date, session, sys: p[session]!.sys, dia: p[session]!.dia }] : [])))
+  // 수축기가 같으면 이완기로 가른다
+  const pickBy = (better: (a: number, b: number) => boolean) => readings.reduce<(typeof readings)[number] | null>((best, r) => (!best || better(r.sys, best.sys) || (r.sys === best.sys && better(r.dia, best.dia)) ? r : best), null)
+  let streak = 0
+  for (let d = to; byDate.get(d)?.morning || byDate.get(d)?.evening; d = addDays(d, -1)) streak++
+  return {
+    from: recent[0]!.date,
+    to,
+    recorded: readings.length,
+    expected: recent.length * 2,
+    inTarget: readings.length ? Math.round(readings.filter(r => inTarget(r.sys, r.dia)).length / readings.length * 100) : null,
+    high: pickBy((a, b) => a > b),
+    low: readings.length > 1 ? pickBy((a, b) => a < b) : null,
+    streak,
+  }
 }
 
 function buildHeadline(week: SessionStats, lastWeek: SessionStats): Insight {
   if (!week.morning && !week.evening) {
-    return { tone: 'empty', title: '아직 이번 주 기록이 없어요', body: '아침에 일어나서, 자기 전에 한 번씩. 1분 간격으로 2번 재서 넣어 주세요.' }
+    return { tone: 'empty', title: '최근 7일 기록이 없어요', body: '아침에 일어나서, 자기 전에 한 번씩. 1분 간격으로 2번 재서 넣어 주세요.' }
   }
 
   const grades = [week.morning, week.evening].filter((s): s is PeriodStat => !!s).map(s => gradeOf(s.sys, s.dia))

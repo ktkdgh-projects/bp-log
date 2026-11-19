@@ -2,6 +2,8 @@
 const { thisMonth, month, year, mon, canNext, go, goToday, session, summary, pending, monthStats, weekCompare, recentRows } = await useTrend()
 useMonthKeys(go, canNext)
 const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.value.recorded / monthStats.value.expected * 100) : 0))
+// 오른쪽: 고른 달 분석 리포트 / 어제까지 최근 7일
+const sideTab = ref<'report' | 'week'>('report')
 </script>
 
 <template>
@@ -50,19 +52,27 @@ const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.v
         </section>
       </div>
 
-      <aside class="card side" aria-label="최근 7일">
-        <h2 class="side-title">최근 7일 <small>날짜와 상관없이 오늘 기준</small></h2>
-        <div v-if="summary" class="headline" :style="{ '--tone-bg': INSIGHT_TONE[summary.headline.tone].bg, '--tone-fg': INSIGHT_TONE[summary.headline.tone].fg }">
-          <InsightIcon :tone="summary.headline.tone" :size="36" />
-          <div>
-            <b class="hl-title">{{ summary.headline.title }}</b>
-            <p class="hl-body">{{ summary.headline.body }}</p>
-          </div>
+      <aside class="card side">
+        <div class="seg side-tabs" role="tablist" aria-label="오른쪽 보기">
+          <button type="button" role="tab" :aria-selected="sideTab === 'report'" :class="{ on: sideTab === 'report' }" @click="sideTab = 'report'"><AppIcon name="trend" :size="14" :stroke="2.2" />{{ mon }}월 분석</button>
+          <button type="button" role="tab" :aria-selected="sideTab === 'week'" :class="{ on: sideTab === 'week' }" @click="sideTab = 'week'"><AppIcon name="calendar" :size="14" :stroke="2.2" />최근 7일</button>
         </div>
-        <WeekCompare :items="weekCompare" aria-label="최근 7일 평균" />
-        <RecentWeek :rows="recentRows" />
-        <div class="insights">
-          <InsightList v-if="summary?.insights.length" :items="summary.insights" compact />
+        <div v-if="sideTab === 'report'" class="side-scroll">
+          <TrendReport v-if="summary" :report="summary.report" />
+        </div>
+        <div v-else-if="summary" class="side-scroll week">
+          <p class="side-note"><b>{{ formatShort(summary.weekStats.from) }} – {{ formatShort(summary.weekStats.to) }}</b> 어제까지 7일 · 고른 달과 상관없어요</p>
+          <div class="headline" :style="{ '--tone-bg': INSIGHT_TONE[summary.headline.tone].bg, '--tone-fg': INSIGHT_TONE[summary.headline.tone].fg }">
+            <InsightIcon :tone="summary.headline.tone" :size="36" />
+            <div>
+              <b class="hl-title">{{ summary.headline.title }}</b>
+              <p class="hl-body">{{ summary.headline.body }}</p>
+            </div>
+          </div>
+          <WeekSummary :stats="summary.weekStats" :rows="recentRows" />
+          <WeekCompare :items="weekCompare" aria-label="최근 7일 평균" />
+          <RecentWeek :rows="recentRows" />
+          <InsightList v-if="summary.insights.length" :items="summary.insights" compact />
         </div>
       </aside>
     </div>
@@ -107,10 +117,13 @@ const rate = computed(() => (monthStats.value.expected ? Math.round(monthStats.v
 .c-sub { font-size: 12px; color: var(--sub); }
 
 .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 18px; }
-.side-title { font-size: 17px; font-weight: 700; }
-.side-title small { margin-left: 6px; font-size: 12px; font-weight: 400; color: var(--mute); }
+.side-tabs button { flex: 1; height: 34px; font-size: 13px; }
+.side-note { font-size: 12px; color: var(--mute); }
+.side-note b { margin-right: 4px; font-size: 13px; color: var(--text-2); }
+/* 리포트는 길어서 패널 안에서 스크롤한다 */
+.side-scroll { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -6px; padding: 0 6px 4px; }
+.side-scroll.week { display: flex; flex-direction: column; gap: 10px; }
 .headline { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: linear-gradient(135deg, var(--tone-bg) 0%, var(--soft) 80%); }
 .hl-title { font-size: 16px; color: var(--tone-fg); }
 .hl-body { font-size: 13px; line-height: 1.5; color: var(--text-2); }
-.insights { flex: 1; min-height: 0; overflow-y: auto; }
 </style>

@@ -2,15 +2,15 @@
 import type { Average, Grade } from '#shared/types'
 
 type Cell = (Average & { grade: Grade }) | null
-// 최근 7일을 날짜 칸으로 나란히 (왼쪽이 오래된 날, 오른쪽 끝이 오늘). 칸마다 위 아침 · 아래 저녁, 색은 등급
-defineProps<{ rows: { date: string, isToday: boolean, morning: Cell, evening: Cell }[] }>()
+// 최근 7일을 날짜 칸으로 나란히 (왼쪽이 오래된 날, 오른쪽 끝이 어제). 칸마다 위 아침 · 아래 저녁, 색은 등급
+defineProps<{ rows: { date: string, morning: Cell, evening: Cell }[] }>()
 </script>
 
 <template>
   <div class="week">
     <ol class="strip" aria-label="최근 7일 기록">
-      <li v-for="r in rows" :key="r.date" class="day" :class="{ today: r.isToday }">
-        <span class="wd" :class="{ sun: weekday(r.date) === 0, sat: weekday(r.date) === 6 }">{{ r.isToday ? '오늘' : WEEKDAYS[weekday(r.date)] }}</span>
+      <li v-for="r in rows" :key="r.date" class="day">
+        <span class="wd" :class="{ sun: weekday(r.date) === 0, sat: weekday(r.date) === 6 }">{{ WEEKDAYS[weekday(r.date)] }}</span>
         <span class="dt">{{ Number(r.date.slice(8, 10)) }}</span>
         <span
           v-for="(c, ci) in [r.morning, r.evening]"
@@ -41,11 +41,9 @@ defineProps<{ rows: { date: string, isToday: boolean, morning: Cell, evening: Ce
 .week { display: flex; flex-direction: column; gap: 8px; }
 .strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin: 0; padding: 0; list-style: none; }
 .day { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 6px 3px 5px; border-radius: 14px; text-align: center; }
-.day.today { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .wd { font-size: 11px; font-weight: 600; color: var(--sub); }
 .wd.sun { color: #b4462a; }
 .wd.sat { color: #3e6fa3; }
-.today .wd { color: var(--accent); font-weight: 700; }
 .dt { margin-top: -3px; font-size: 13px; font-weight: 700; color: var(--text-2); }
 .tile {
   position: relative;

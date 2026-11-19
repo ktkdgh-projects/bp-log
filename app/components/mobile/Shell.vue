@@ -37,7 +37,9 @@ const NAV = [
   overflow-y: auto;
   padding: calc(10px + env(safe-area-inset-top)) 16px calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));
 }
-.main > :deep(*) { flex: 1; min-height: 0; }
+/* 페이지는 화면 높이를 채우고, 내용이 더 길면 그만큼 늘어나 하단 메뉴 위까지 끝까지 스크롤된다
+   (:where로 약하게 걸어 두어 페이지가 스스로 높이 방식을 정할 수 있다) */
+:where(.main) > :deep(*) { flex: 1 0 auto; }
 .bottom {
   position: fixed;
   left: 0;
